@@ -1,7 +1,51 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { calculateMargin } from "@/lib/margin-calculator";
 import { COPY } from "@/lib/copy";
+import type { Job, MarginStatus } from "@/types";
+
+export const dynamic = "force-dynamic";
+
+const MARGIN_STATUS_COLOR: Record<MarginStatus, string> = {
+  on_track: "text-green-600",
+  at_risk: "text-amber-600",
+  over_budget: "text-red-600",
+};
+
+const MARGIN_BORDER: Record<MarginStatus, string> = {
+  on_track: "border-l-green-500",
+  at_risk: "border-l-amber-500",
+  over_budget: "border-l-red-500",
+};
+
+const STATUS_BADGE: Record<string, string> = {
+  estimating: "bg-blue-100 text-blue-700",
+  active: "bg-green-100 text-green-700",
+  on_hold: "bg-amber-100 text-amber-700",
+  closed: "bg-gray-100 text-gray-700",
+};
+
+function formatCAD(amount: number): string {
+  return new Intl.NumberFormat("en-CA", {
+    style: "currency",
+    currency: "CAD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+function computeJobMargin(job: Job) {
+  return calculateMargin({
+    contractValue: job.contract_value,
+    estimatedLabourHours: job.estimated_labour_hours,
+    labourRate: job.estimated_labour_rate ?? 85,
+    estimatedMaterials: job.estimated_materials,
+    estimatedSubcontractor: job.estimated_subcontractor,
+    overheadRate: job.estimated_overhead_rate ?? 15,
+    actualCost: job.actual_cost,
+  });
+}
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -19,19 +63,43 @@ export default async function DashboardPage() {
     .eq("id", user.id)
     .single();
 
+  const companyId = profile?.company_id ?? "";
   const firstName = profile?.full_name?.split(" ")[0] ?? "there";
 
-  // Fetch active job count
-  const { count: activeJobs } = await supabase
+  // Fetch active jobs with data for margin calculation
+  const { data: activeJobRows } = await supabase
     .from("jobs")
-    .select("*", { count: "exact", head: true })
-    .eq("company_id", profile?.company_id ?? "")
-    .in("status", ["active", "estimating"]);
+    .select("*")
+    .eq("company_id", companyId)
+    .in("status", ["active", "estimating"])
+    .order("created_at", { ascending: false });
+
+  const activeJobs = activeJobRows ?? [];
 
   const { count: totalJobs } = await supabase
     .from("jobs")
     .select("*", { count: "exact", head: true })
-    .eq("company_id", profile?.company_id ?? "");
+    .eq("company_id", companyId);
+
+  // Compute margins for all active jobs
+  const jobsWithMargin = activeJobs.map((job) => {
+    const margin = computeJobMargin(job as Job);
+    return { job: job as Job, margin };
+  });
+
+  // Compute live stats
+  const atRiskCount = jobsWithMargin.filter(
+    (j) => j.margin.status === "at_risk" || j.margin.status === "over_budget"
+  ).length;
+
+  const jobsWithContractValue = jobsWithMargin.filter(
+    (j) => j.job.contract_value > 0
+  );
+  const avgMargin =
+    jobsWithContractValue.length > 0
+      ? jobsWithContractValue.reduce((sum, j) => sum + j.margin.actualMarginPct, 0) /
+        jobsWithContractValue.length
+      : null;
 
   return (
     <div className="space-y-8">
@@ -59,7 +127,7 @@ export default async function DashboardPage() {
               </div>
               <p className="text-sm font-medium text-muted-foreground">Active Jobs</p>
             </div>
-            <p className="mt-3 text-3xl font-bold tabular-nums text-foreground">{activeJobs ?? 0}</p>
+            <p className="mt-3 text-3xl font-bold tabular-nums text-foreground">{activeJobs.length}</p>
             <p className="mt-1 text-xs text-muted-foreground">{totalJobs ?? 0} total all time</p>
           </div>
         </div>
@@ -76,7 +144,9 @@ export default async function DashboardPage() {
               </div>
               <p className="text-sm font-medium text-muted-foreground">At Risk</p>
             </div>
-            <p className="mt-3 text-3xl font-bold tabular-nums text-foreground">0</p>
+            <p className={`mt-3 text-3xl font-bold tabular-nums ${atRiskCount > 0 ? "text-red-600" : "text-foreground"}`}>
+              {atRiskCount}
+            </p>
             <p className="mt-1 text-xs text-muted-foreground">Jobs over budget or at risk</p>
           </div>
         </div>
@@ -93,15 +163,17 @@ export default async function DashboardPage() {
               </div>
               <p className="text-sm font-medium text-muted-foreground">Avg. Margin</p>
             </div>
-            <p className="mt-3 text-3xl font-bold tabular-nums text-foreground">—</p>
-            <p className="mt-1 text-xs text-muted-foreground">Across active jobs this month</p>
+            <p className="mt-3 text-3xl font-bold tabular-nums text-foreground">
+              {avgMargin !== null ? `${avgMargin.toFixed(1)}%` : "—"}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">Across {jobsWithContractValue.length} active job{jobsWithContractValue.length !== 1 ? "s" : ""}</p>
           </div>
         </div>
       </div>
 
-      {/* Quick actions / empty state */}
+      {/* Job table or empty state */}
       <div className="animate-slide-up" style={{ animationDelay: "200ms" }}>
-        {(activeJobs ?? 0) === 0 ? (
+        {activeJobs.length === 0 ? (
           <div className="relative overflow-hidden rounded-xl border border-dashed border-emerald-200 bg-gradient-to-br from-emerald-50/50 to-teal-50/30 p-8 text-center md:p-12">
             <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-emerald-100/50" />
             <div className="absolute -bottom-4 -left-4 h-24 w-24 rounded-full bg-teal-100/30" />
@@ -127,19 +199,108 @@ export default async function DashboardPage() {
             </div>
           </div>
         ) : (
-          <div className="rounded-xl border bg-white p-6 shadow-card">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">Recent Activity</h2>
+          <div className="rounded-xl border bg-white shadow-card">
+            <div className="flex items-center justify-between border-b px-6 py-4">
+              <h2 className="text-lg font-semibold text-foreground">Active Jobs</h2>
               <Link
                 href="/dashboard/jobs"
                 className="text-sm font-medium text-emerald-600 hover:text-emerald-500 transition-colors"
               >
-                View all jobs →
+                View all →
               </Link>
             </div>
-            <p className="mt-4 text-sm text-muted-foreground">
-              Job activity feed will appear here as costs are logged.
-            </p>
+
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b bg-muted/30 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    <th className="px-6 py-3">Job</th>
+                    <th className="px-6 py-3">Customer</th>
+                    <th className="px-6 py-3">Status</th>
+                    <th className="px-6 py-3 text-right">Contract</th>
+                    <th className="px-6 py-3 text-right">Est. Margin</th>
+                    <th className="px-6 py-3 text-right">Actual Margin</th>
+                    <th className="px-6 py-3 text-right">Variance</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {jobsWithMargin.map(({ job, margin }) => (
+                    <tr
+                      key={job.id}
+                      className={`border-l-4 ${MARGIN_BORDER[margin.status]} transition-colors hover:bg-muted/20`}
+                    >
+                      <td className="px-6 py-4">
+                        <Link href={`/dashboard/jobs/${job.id}`} className="font-medium text-foreground hover:text-emerald-600 transition-colors">
+                          {job.name}
+                        </Link>
+                        {job.sms_code && (
+                          <span className="ml-2 text-xs text-muted-foreground">{job.sms_code}</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-muted-foreground">{job.customer_name ?? "—"}</td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[job.status] ?? ""}`}>
+                          {job.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right text-sm tabular-nums text-muted-foreground">
+                        {formatCAD(job.contract_value)}
+                      </td>
+                      <td className="px-6 py-4 text-right text-sm tabular-nums font-medium">
+                        {margin.estimatedMarginPct.toFixed(1)}%
+                      </td>
+                      <td className={`px-6 py-4 text-right text-sm tabular-nums font-semibold ${MARGIN_STATUS_COLOR[margin.status]}`}>
+                        {job.contract_value > 0 ? `${margin.actualMarginPct.toFixed(1)}%` : "—"}
+                      </td>
+                      <td className="px-6 py-4 text-right text-sm tabular-nums">
+                        <span className={margin.varianceDollar >= 0 ? "text-green-600" : "text-red-600"}>
+                          {margin.varianceDollar >= 0 ? "+" : ""}{formatCAD(margin.varianceDollar)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile cards */}
+            <div className="divide-y md:hidden">
+              {jobsWithMargin.map(({ job, margin }) => (
+                <Link
+                  key={job.id}
+                  href={`/dashboard/jobs/${job.id}`}
+                  className={`block border-l-4 ${MARGIN_BORDER[margin.status]} px-4 py-4 transition-colors hover:bg-muted/20`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-foreground truncate">{job.name}</p>
+                      <p className="text-xs text-muted-foreground">{job.customer_name ?? "No customer"}</p>
+                    </div>
+                    <span className={`ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[job.status] ?? ""}`}>
+                      {job.status}
+                    </span>
+                  </div>
+                  <div className="mt-3 flex items-center gap-4 text-xs">
+                    <div>
+                      <span className="text-muted-foreground">Contract: </span>
+                      <span className="font-medium tabular-nums">{formatCAD(job.contract_value)}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Margin: </span>
+                      <span className={`font-semibold tabular-nums ${MARGIN_STATUS_COLOR[margin.status]}`}>
+                        {job.contract_value > 0 ? `${margin.actualMarginPct.toFixed(1)}%` : "—"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className={`font-medium tabular-nums ${margin.varianceDollar >= 0 ? "text-green-600" : "text-red-600"}`}>
+                        {margin.varianceDollar >= 0 ? "+" : ""}{formatCAD(margin.varianceDollar)}
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
         )}
       </div>
