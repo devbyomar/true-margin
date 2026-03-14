@@ -166,6 +166,20 @@ export const COPY = {
 
   // Reports
   REPORTS_TITLE: "Reports",
+  REPORTS_SUBTITLE: "Margin performance across your jobs.",
+  REPORTS_MARGIN_BY_MONTH: "Margin by Month",
+  REPORTS_MARGIN_BY_TYPE: "Margin by Job Type",
+  REPORTS_JOB_SUMMARY: "Job Summary",
+  REPORTS_TOTAL_REVENUE: "Total Revenue",
+  REPORTS_TOTAL_COST: "Total Cost",
+  REPORTS_TOTAL_PROFIT: "Total Profit",
+  REPORTS_AVG_MARGIN: "Avg. Margin",
+  REPORTS_NO_DATA: "No completed jobs to report on yet. Close a job to see margin data here.",
+  REPORTS_PERIOD_THIS_MONTH: "This Month",
+  REPORTS_PERIOD_LAST_3: "Last 3 Months",
+  REPORTS_PERIOD_LAST_6: "Last 6 Months",
+  REPORTS_PERIOD_THIS_YEAR: "This Year",
+  REPORTS_PERIOD_ALL_TIME: "All Time",
 
   // SMS
   SMS_SUCCESS: "✓ ${amount} ${category} logged on ${jobCode}. Job margin: ${margin}% (${status})",
