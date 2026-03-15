@@ -132,8 +132,6 @@ export default async function JobDetailPage({ params }: RouteParams) {
     users: { full_name: string | null } | null;
   }>;
 
-  const changeOrderCount = changeOrders.length;
-
   // Fetch time entries
   const { data: timeEntriesData } = await supabase
     .from("time_entries")

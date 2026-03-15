@@ -9,10 +9,6 @@ const StartSchema = z.object({
   notes: z.string().optional(),
 });
 
-const StopSchema = z.object({
-  time_entry_id: z.string().uuid(),
-});
-
 /**
  * GET /api/time-entries
  * List time entries. Optional ?job_id= filter, ?active=true for active only.

@@ -14,15 +14,6 @@ const STATUS_LABELS: Record<string, string> = {
   closed: COPY.STATUS_CLOSED,
 };
 
-function formatCAD(amount: number): string {
-  return new Intl.NumberFormat("en-CA", {
-    style: "currency",
-    currency: "CAD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
-}
-
 export const dynamic = "force-dynamic";
 
 interface JobsPageProps {
