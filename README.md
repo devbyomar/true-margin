@@ -19,7 +19,7 @@ A real-time job costing and margin tracking SaaS platform built for Canadian spe
 
 ## The Problem
 
-A typical 6-person HVAC company in Ontario completes ~12 jobs per month. The owner doesn't know which jobs made money until the bookkeeper reconciles — often 30–45 days later. By then, money-losing patterns have repeated and margin leaks are invisible.
+A typical 6-person HVAC company in Ontario completes ~12 jobs per month. The owner doesn't know which jobs made money until the bookkeeper reconciles — often 30-45 days later. By then, money-losing patterns have repeated and margin leaks are invisible.
 
 **TrueMargin fixes this.** Contractors see their real margin on every job, in real time, as costs come in from the field — via manual entry, SMS from crew, or OCR invoice scanning.
 
@@ -315,18 +315,6 @@ After deploying, update your webhook endpoints:
 
 - **Stripe:** `https://your-domain.com/api/stripe/webhook`
 - **Twilio:** `https://your-domain.com/api/sms/webhook`
-
----
-
-## Contributing
-
-This is a proprietary project. If you're part of the team:
-
-1. Create a feature branch from `develop`: `git checkout -b feature/your-feature`
-2. Make your changes with clear, atomic commits
-3. Merge into `develop` with `--no-ff`: `git merge --no-ff feature/your-feature`
-4. Push `develop` to origin
-5. Clean up: delete the feature branch locally and remotely
 
 ---
 
