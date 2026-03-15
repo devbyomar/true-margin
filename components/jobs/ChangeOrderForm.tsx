@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { COPY } from "@/lib/copy";
 
@@ -29,6 +30,7 @@ export function ChangeOrderForm({ jobId, jobName }: ChangeOrderFormProps) {
     handleSubmit,
     formState: { errors },
   } = useForm<ChangeOrderFormValues>({
+    resolver: zodResolver(changeOrderSchema),
     defaultValues: {
       title: "",
       description: "",
