@@ -116,7 +116,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
       : null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex items-center justify-between animate-slide-up">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">

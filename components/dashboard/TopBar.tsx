@@ -18,20 +18,20 @@ export function TopBar({ userName, companyName }: TopBarProps) {
     .toUpperCase();
 
   return (
-    <header className="flex h-16 items-center justify-between border-b bg-white/80 backdrop-blur-md px-4 md:px-6">
+    <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-white/80 backdrop-blur-xl px-4 md:h-16 md:px-6">
       {/* Mobile logo */}
-      <div className="flex items-center gap-2 md:hidden">
-        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-500 text-xs font-bold text-white">
+      <div className="flex items-center gap-2.5 md:hidden">
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500 text-xs font-bold text-white shadow-sm">
           T
         </div>
-        <span className="text-base font-bold text-foreground">{COPY.APP_NAME}</span>
+        <span className="text-base font-bold tracking-tight text-foreground">{COPY.APP_NAME}</span>
       </div>
 
       {/* Breadcrumb / page context — desktop */}
       <div className="hidden items-center gap-3 md:flex">
         {companyName && (
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-50 text-xs font-bold text-emerald-600">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-50 to-teal-50 text-xs font-bold text-emerald-600 ring-1 ring-emerald-100">
               {companyName.charAt(0).toUpperCase()}
             </div>
             <span className="text-sm font-semibold text-foreground">
@@ -42,22 +42,22 @@ export function TopBar({ userName, companyName }: TopBarProps) {
       </div>
 
       {/* Right side — user area */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 md:gap-3">
         {/* Notification bell placeholder */}
         <button
-          className="relative flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:h-9 md:w-9"
           aria-label="Notifications"
         >
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor" aria-hidden="true">
+          <svg className="h-[18px] w-[18px] md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
           </svg>
         </button>
 
         {/* Divider */}
-        <div className="h-6 w-px bg-border" />
+        <div className="hidden h-6 w-px bg-border sm:block" />
 
         {/* User avatar + info */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <div className="hidden flex-col items-end sm:flex">
             <span className="text-sm font-medium text-foreground leading-tight">
               {userName}
@@ -66,7 +66,7 @@ export function TopBar({ userName, companyName }: TopBarProps) {
               Owner
             </span>
           </div>
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 text-xs font-bold text-white shadow-sm">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 text-[11px] font-bold text-white shadow-sm ring-2 ring-white md:h-9 md:w-9 md:text-xs">
             {initials}
           </div>
         </div>
@@ -77,10 +77,10 @@ export function TopBar({ userName, companyName }: TopBarProps) {
             type="submit"
             variant="ghost"
             size="sm"
-            className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground"
+            className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
             aria-label={COPY.NAV_LOGOUT}
           >
-            <svg className="mr-1 h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor" aria-hidden="true">
+            <svg className="h-3.5 w-3.5 sm:mr-1" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
             </svg>
             <span className="hidden sm:inline">{COPY.NAV_LOGOUT}</span>
