@@ -203,32 +203,32 @@ export default async function JobDetailPage({ params }: RouteParams) {
           <PortalShareButton portalToken={typedJob.customer_portal_token} />
           <Link
             href={`/dashboard/jobs/${id}/edit`}
-            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border bg-white px-3 text-sm font-semibold text-foreground shadow-sm transition-all hover:bg-muted/50 active:scale-[0.98]"
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border bg-white px-2.5 text-sm font-semibold text-foreground shadow-sm transition-all hover:bg-muted/50 active:scale-[0.98] sm:px-3"
             aria-label={COPY.EDIT_JOB}
           >
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
             </svg>
-            {COPY.EDIT_JOB}
+            <span className="hidden sm:inline">{COPY.EDIT_JOB}</span>
           </Link>
           <JobDetailActions jobId={id} currentStatus={typedJob.status} />
           <Link
             href={`/dashboard/jobs/${id}/change-orders/new`}
-            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm shadow-emerald-500/20 transition-all hover:bg-primary/90 active:scale-[0.98]"
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-primary px-2.5 text-sm font-semibold text-primary-foreground shadow-sm shadow-emerald-500/20 transition-all hover:bg-primary/90 active:scale-[0.98] sm:px-3"
             aria-label={COPY.NEW_CHANGE_ORDER}
           >
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
             </svg>
-            {COPY.NEW_CHANGE_ORDER}
+            <span className="hidden sm:inline">{COPY.NEW_CHANGE_ORDER}</span>
           </Link>
         </div>
       </div>
 
       {/* Main layout: two columns on desktop */}
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Left column — margin + job info */}
-        <div className="space-y-6 lg:col-span-1">
+        {/* Left column — margin + job info (shows first on mobile) */}
+        <div className="space-y-6 lg:col-span-1 order-first">
           {/* Margin gauge */}
           <MarginGauge
             estimatedMarginPct={margin.estimatedMarginPct}
@@ -337,9 +337,9 @@ export default async function JobDetailPage({ params }: RouteParams) {
               <dl className="divide-y text-sm">
                 <div className="flex items-center justify-between px-5 py-2.5">
                   <dt className="text-muted-foreground">Labour</dt>
-                  <dd className="flex gap-3 tabular-nums text-right">
+                  <dd className="flex gap-2 tabular-nums text-right text-xs sm:text-sm sm:gap-3">
                     <span className="text-muted-foreground">{formatCAD(labourEstimate)}</span>
-                    <span className="font-medium">→</span>
+                    <span className="font-medium hidden sm:inline">→</span>
                     <span className={`font-semibold ${(categoryTotals["labour"] ?? 0) > labourEstimate ? "text-red-600" : "text-emerald-600"}`}>
                       {formatCAD(categoryTotals["labour"] ?? 0)}
                     </span>
@@ -347,9 +347,9 @@ export default async function JobDetailPage({ params }: RouteParams) {
                 </div>
                 <div className="flex items-center justify-between px-5 py-2.5">
                   <dt className="text-muted-foreground">Materials</dt>
-                  <dd className="flex gap-3 tabular-nums text-right">
+                  <dd className="flex gap-2 tabular-nums text-right text-xs sm:text-sm sm:gap-3">
                     <span className="text-muted-foreground">{formatCAD(typedJob.estimated_materials)}</span>
-                    <span className="font-medium">→</span>
+                    <span className="font-medium hidden sm:inline">→</span>
                     <span className={`font-semibold ${(categoryTotals["materials"] ?? 0) > typedJob.estimated_materials ? "text-red-600" : "text-emerald-600"}`}>
                       {formatCAD(categoryTotals["materials"] ?? 0)}
                     </span>
@@ -357,9 +357,9 @@ export default async function JobDetailPage({ params }: RouteParams) {
                 </div>
                 <div className="flex items-center justify-between px-5 py-2.5">
                   <dt className="text-muted-foreground">Subcontractor</dt>
-                  <dd className="flex gap-3 tabular-nums text-right">
+                  <dd className="flex gap-2 tabular-nums text-right text-xs sm:text-sm sm:gap-3">
                     <span className="text-muted-foreground">{formatCAD(typedJob.estimated_subcontractor)}</span>
-                    <span className="font-medium">→</span>
+                    <span className="font-medium hidden sm:inline">→</span>
                     <span className={`font-semibold ${(categoryTotals["subcontractor"] ?? 0) > typedJob.estimated_subcontractor ? "text-red-600" : "text-emerald-600"}`}>
                       {formatCAD(categoryTotals["subcontractor"] ?? 0)}
                     </span>
@@ -367,9 +367,9 @@ export default async function JobDetailPage({ params }: RouteParams) {
                 </div>
                 <div className="flex items-center justify-between px-5 py-2.5 bg-muted/20">
                   <dt className="font-semibold text-foreground">Total</dt>
-                  <dd className="flex gap-3 tabular-nums text-right">
+                  <dd className="flex gap-2 tabular-nums text-right text-xs sm:text-sm sm:gap-3">
                     <span className="font-semibold text-muted-foreground">{formatCAD(margin.estimatedCost)}</span>
-                    <span className="font-medium">→</span>
+                    <span className="font-medium hidden sm:inline">→</span>
                     <span className={`font-bold ${margin.actualCost > margin.estimatedCost ? "text-red-600" : "text-emerald-600"}`}>
                       {formatCAD(margin.actualCost)}
                     </span>
