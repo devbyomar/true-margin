@@ -1,28 +1,34 @@
 import Stripe from "stripe";
 
-if (!process.env.STRIPE_SECRET_KEY && process.env.NODE_ENV === "production") {
-  throw new Error("Missing STRIPE_SECRET_KEY environment variable");
-}
+let _stripe: Stripe | null = null;
 
-export const stripe = process.env.STRIPE_SECRET_KEY
-  ? new Stripe(process.env.STRIPE_SECRET_KEY, {
+function getStripeInstance(): Stripe | null {
+  if (_stripe) return _stripe;
+  if (process.env.STRIPE_SECRET_KEY) {
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
       apiVersion: "2026-02-25.clover",
       typescript: true,
-    })
-  : (null as unknown as Stripe);
+    });
+  }
+  return _stripe;
+}
 
 /**
  * Returns the Stripe instance, throwing if not configured.
  * Use this in API routes that require Stripe.
  */
 export function getStripe(): Stripe {
-  if (!stripe) {
+  const instance = getStripeInstance();
+  if (!instance) {
     throw new Error(
       "Stripe is not configured. Set STRIPE_SECRET_KEY in your environment."
     );
   }
-  return stripe;
+  return instance;
 }
+
+/** @deprecated Use getStripe() instead for lazy initialization */
+export const stripe = getStripeInstance();
 
 /** Plan configuration — maps internal plan names to Stripe price IDs. */
 export const PLAN_CONFIG = {
