@@ -1,7 +1,52 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { calculateMargin } from "@/lib/margin-calculator";
 import { COPY } from "@/lib/copy";
+import { BenchmarkCard } from "@/components/dashboard/BenchmarkCard";
+import type { Job, MarginStatus } from "@/types";
+
+export const dynamic = "force-dynamic";
+
+const MARGIN_STATUS_COLOR: Record<MarginStatus, string> = {
+  on_track: "text-green-600",
+  at_risk: "text-amber-600",
+  over_budget: "text-red-600",
+};
+
+const MARGIN_BORDER: Record<MarginStatus, string> = {
+  on_track: "border-l-green-500",
+  at_risk: "border-l-amber-500",
+  over_budget: "border-l-red-500",
+};
+
+const STATUS_BADGE: Record<string, string> = {
+  estimating: "bg-blue-100 text-blue-700",
+  active: "bg-green-100 text-green-700",
+  on_hold: "bg-amber-100 text-amber-700",
+  closed: "bg-gray-100 text-gray-700",
+};
+
+function formatCAD(amount: number): string {
+  return new Intl.NumberFormat("en-CA", {
+    style: "currency",
+    currency: "CAD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
+function computeJobMargin(job: Job) {
+  return calculateMargin({
+    contractValue: job.contract_value,
+    estimatedLabourHours: job.estimated_labour_hours,
+    labourRate: job.estimated_labour_rate ?? 85,
+    estimatedMaterials: job.estimated_materials,
+    estimatedSubcontractor: job.estimated_subcontractor,
+    overheadRate: job.estimated_overhead_rate ?? 15,
+    actualCost: job.actual_cost,
+  });
+}
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -19,19 +64,85 @@ export default async function DashboardPage() {
     .eq("id", user.id)
     .single();
 
+  const companyId = profile?.company_id ?? "";
   const firstName = profile?.full_name?.split(" ")[0] ?? "there";
 
-  // Fetch active job count
-  const { count: activeJobs } = await supabase
+  // Fetch active jobs with data for margin calculation
+  const { data: activeJobRows } = await supabase
     .from("jobs")
-    .select("*", { count: "exact", head: true })
-    .eq("company_id", profile?.company_id ?? "")
-    .in("status", ["active", "estimating"]);
+    .select("*")
+    .eq("company_id", companyId)
+    .in("status", ["active", "estimating"])
+    .order("created_at", { ascending: false });
+
+  const activeJobs = activeJobRows ?? [];
 
   const { count: totalJobs } = await supabase
     .from("jobs")
     .select("*", { count: "exact", head: true })
-    .eq("company_id", profile?.company_id ?? "");
+    .eq("company_id", companyId);
+
+  // Compute margins for all active jobs
+  const jobsWithMargin = activeJobs.map((job) => {
+    const margin = computeJobMargin(job as Job);
+    return { job: job as Job, margin };
+  });
+
+  // Compute live stats
+  const atRiskCount = jobsWithMargin.filter(
+    (j) => j.margin.status === "at_risk" || j.margin.status === "over_budget"
+  ).length;
+
+  const jobsWithContractValue = jobsWithMargin.filter(
+    (j) => j.job.contract_value > 0
+  );
+  const avgMargin =
+    jobsWithContractValue.length > 0
+      ? jobsWithContractValue.reduce((sum, j) => sum + j.margin.actualMarginPct, 0) /
+        jobsWithContractValue.length
+      : null;
+
+  // Find worst performing active job
+  const worstJob =
+    jobsWithMargin.length > 0
+      ? jobsWithMargin.reduce((worst, curr) =>
+          curr.margin.actualMarginPct < worst.margin.actualMarginPct ? curr : worst
+        )
+      : null;
+
+  // Compute margin trend: compare current month avg vs last month
+  const now = new Date();
+  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+  // Fetch closed jobs for last 2 months for trend
+  const { data: trendJobsData } = await supabase
+    .from("jobs")
+    .select("*")
+    .eq("company_id", companyId)
+    .gte("closed_at", lastMonthStart.toISOString())
+    .order("closed_at", { ascending: false });
+
+  const trendJobs = (trendJobsData ?? []) as Job[];
+
+  const thisMonthJobs = trendJobs.filter((j) => j.closed_at && new Date(j.closed_at) >= thisMonthStart);
+  const lastMonthJobs = trendJobs.filter(
+    (j) => j.closed_at && new Date(j.closed_at) >= lastMonthStart && new Date(j.closed_at) < thisMonthStart
+  );
+
+  const thisMonthAvg = thisMonthJobs.length > 0
+    ? thisMonthJobs.reduce((s, j) => s + computeJobMargin(j).actualMarginPct, 0) / thisMonthJobs.length
+    : null;
+  const lastMonthAvg = lastMonthJobs.length > 0
+    ? lastMonthJobs.reduce((s, j) => s + computeJobMargin(j).actualMarginPct, 0) / lastMonthJobs.length
+    : null;
+
+  let marginTrend: "up" | "down" | "same" | null = null;
+  let marginDelta = 0;
+  if (thisMonthAvg !== null && lastMonthAvg !== null) {
+    marginDelta = thisMonthAvg - lastMonthAvg;
+    marginTrend = marginDelta > 0.5 ? "up" : marginDelta < -0.5 ? "down" : "same";
+  }
 
   return (
     <div className="space-y-8">
@@ -48,7 +159,7 @@ export default async function DashboardPage() {
       {/* Stat cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 animate-slide-up" style={{ animationDelay: "100ms" }}>
         {/* Active Jobs */}
-        <div className="group relative overflow-hidden rounded-xl border bg-white p-6 shadow-card transition-all duration-300 hover:shadow-card-hover">
+        <Link href="/dashboard/jobs?status=active" className="group relative overflow-hidden rounded-xl border bg-white p-6 shadow-card transition-all duration-300 hover:shadow-card-hover" aria-label="View active jobs">
           <div className="absolute right-0 top-0 h-24 w-24 translate-x-6 -translate-y-6 rounded-full bg-emerald-500/[0.08] transition-transform group-hover:scale-125" />
           <div className="relative">
             <div className="flex items-center gap-3">
@@ -59,13 +170,13 @@ export default async function DashboardPage() {
               </div>
               <p className="text-sm font-medium text-muted-foreground">Active Jobs</p>
             </div>
-            <p className="mt-3 text-3xl font-bold tabular-nums text-foreground">{activeJobs ?? 0}</p>
+            <p className="mt-3 text-3xl font-bold tabular-nums text-foreground">{activeJobs.length}</p>
             <p className="mt-1 text-xs text-muted-foreground">{totalJobs ?? 0} total all time</p>
           </div>
-        </div>
+        </Link>
 
         {/* At Risk Jobs */}
-        <div className="group relative overflow-hidden rounded-xl border bg-white p-6 shadow-card transition-all duration-300 hover:shadow-card-hover">
+        <Link href="/dashboard/jobs?filter=at_risk" className="group relative overflow-hidden rounded-xl border bg-white p-6 shadow-card transition-all duration-300 hover:shadow-card-hover" aria-label="View at risk jobs">
           <div className="absolute right-0 top-0 h-24 w-24 translate-x-6 -translate-y-6 rounded-full bg-amber-500/[0.08] transition-transform group-hover:scale-125" />
           <div className="relative">
             <div className="flex items-center gap-3">
@@ -76,13 +187,15 @@ export default async function DashboardPage() {
               </div>
               <p className="text-sm font-medium text-muted-foreground">At Risk</p>
             </div>
-            <p className="mt-3 text-3xl font-bold tabular-nums text-foreground">0</p>
+            <p className={`mt-3 text-3xl font-bold tabular-nums ${atRiskCount > 0 ? "text-red-600" : "text-foreground"}`}>
+              {atRiskCount}
+            </p>
             <p className="mt-1 text-xs text-muted-foreground">Jobs over budget or at risk</p>
           </div>
-        </div>
+        </Link>
 
         {/* Avg Margin */}
-        <div className="group relative overflow-hidden rounded-xl border bg-white p-6 shadow-card transition-all duration-300 hover:shadow-card-hover sm:col-span-2 lg:col-span-1">
+        <Link href="/dashboard/reports" className="group relative overflow-hidden rounded-xl border bg-white p-6 shadow-card transition-all duration-300 hover:shadow-card-hover sm:col-span-2 lg:col-span-1" aria-label="View reports">
           <div className="absolute right-0 top-0 h-24 w-24 translate-x-6 -translate-y-6 rounded-full bg-blue-500/[0.08] transition-transform group-hover:scale-125" />
           <div className="relative">
             <div className="flex items-center gap-3">
@@ -93,15 +206,60 @@ export default async function DashboardPage() {
               </div>
               <p className="text-sm font-medium text-muted-foreground">Avg. Margin</p>
             </div>
-            <p className="mt-3 text-3xl font-bold tabular-nums text-foreground">—</p>
-            <p className="mt-1 text-xs text-muted-foreground">Across active jobs this month</p>
+            <p className="mt-3 text-3xl font-bold tabular-nums text-foreground">
+              {avgMargin !== null ? `${avgMargin.toFixed(1)}%` : "—"}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Across {jobsWithContractValue.length} active job{jobsWithContractValue.length !== 1 ? "s" : ""}
+              {marginTrend && (
+                <span className={`ml-1.5 inline-flex items-center gap-0.5 ${marginTrend === "up" ? "text-emerald-600" : marginTrend === "down" ? "text-red-600" : "text-muted-foreground"}`}>
+                  {marginTrend === "up" && "↑"}
+                  {marginTrend === "down" && "↓"}
+                  {marginTrend === "same" && "→"}
+                  {Math.abs(marginDelta).toFixed(1)}% {marginTrend === "up" ? COPY.MARGIN_TREND_UP : marginTrend === "down" ? COPY.MARGIN_TREND_DOWN : COPY.MARGIN_TREND_SAME}
+                </span>
+              )}
+            </p>
           </div>
-        </div>
+        </Link>
       </div>
 
-      {/* Quick actions / empty state */}
-      <div className="animate-slide-up" style={{ animationDelay: "200ms" }}>
-        {(activeJobs ?? 0) === 0 ? (
+      {/* Worst performing job callout */}
+      {worstJob && worstJob.margin.status !== "on_track" && (
+        <Link
+          href={`/dashboard/jobs/${worstJob.job.id}`}
+          className="group block animate-slide-up"
+          style={{ animationDelay: "150ms" }}
+          aria-label={`${COPY.WORST_JOB_TITLE}: ${worstJob.job.name}`}
+        >
+          <div className="relative overflow-hidden rounded-xl border border-red-200 bg-gradient-to-r from-red-50/80 to-amber-50/40 p-5 shadow-card transition-all duration-300 hover:shadow-card-hover">
+            <div className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-red-100 text-red-600">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+            </div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-red-600/80">{COPY.WORST_JOB_TITLE}</p>
+            <p className="mt-1 text-lg font-bold text-foreground group-hover:text-red-700 transition-colors">{worstJob.job.name}</p>
+            <div className="mt-2 flex items-center gap-4 text-sm">
+              <span className="text-muted-foreground">
+                Margin: <span className="font-bold text-red-600 tabular-nums">{worstJob.margin.actualMarginPct.toFixed(1)}%</span>
+              </span>
+              <span className="text-muted-foreground">
+                {COPY.VARIANCE}: <span className={`font-semibold tabular-nums ${worstJob.margin.varianceDollar >= 0 ? "text-emerald-600" : "text-red-600"}`}>{worstJob.margin.varianceDollar >= 0 ? "+" : ""}{formatCAD(worstJob.margin.varianceDollar)}</span>
+              </span>
+              {worstJob.job.customer_name && (
+                <span className="text-muted-foreground">{worstJob.job.customer_name}</span>
+              )}
+            </div>
+          </div>
+        </Link>
+      )}
+
+      {/* Job table or empty state */}
+      <div className="grid gap-6 lg:grid-cols-3 animate-slide-up" style={{ animationDelay: "200ms" }}>
+        {/* Jobs table — takes 2/3 width on desktop */}
+        <div className="lg:col-span-2">
+        {activeJobs.length === 0 ? (
           <div className="relative overflow-hidden rounded-xl border border-dashed border-emerald-200 bg-gradient-to-br from-emerald-50/50 to-teal-50/30 p-8 text-center md:p-12">
             <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-emerald-100/50" />
             <div className="absolute -bottom-4 -left-4 h-24 w-24 rounded-full bg-teal-100/30" />
@@ -127,21 +285,116 @@ export default async function DashboardPage() {
             </div>
           </div>
         ) : (
-          <div className="rounded-xl border bg-white p-6 shadow-card">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">Recent Activity</h2>
+          <div className="rounded-xl border bg-white shadow-card">
+            <div className="flex items-center justify-between border-b px-6 py-4">
+              <h2 className="text-lg font-semibold text-foreground">Active Jobs</h2>
               <Link
                 href="/dashboard/jobs"
                 className="text-sm font-medium text-emerald-600 hover:text-emerald-500 transition-colors"
               >
-                View all jobs →
+                View all →
               </Link>
             </div>
-            <p className="mt-4 text-sm text-muted-foreground">
-              Job activity feed will appear here as costs are logged.
-            </p>
+
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b bg-muted/30 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    <th className="px-6 py-3">Job</th>
+                    <th className="px-6 py-3">Customer</th>
+                    <th className="px-6 py-3">Status</th>
+                    <th className="px-6 py-3 text-right">Contract</th>
+                    <th className="px-6 py-3 text-right">Est. Margin</th>
+                    <th className="px-6 py-3 text-right">Actual Margin</th>
+                    <th className="px-6 py-3 text-right">{COPY.VARIANCE}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {jobsWithMargin.map(({ job, margin }) => (
+                    <tr
+                      key={job.id}
+                      className={`border-l-4 ${MARGIN_BORDER[margin.status]} transition-colors hover:bg-muted/20`}
+                    >
+                      <td className="px-6 py-4">
+                        <Link href={`/dashboard/jobs/${job.id}`} className="font-medium text-foreground hover:text-emerald-600 transition-colors">
+                          {job.name}
+                        </Link>
+                        {job.sms_code && (
+                          <span className="ml-2 text-xs text-muted-foreground">{job.sms_code}</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-muted-foreground">{job.customer_name ?? "—"}</td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[job.status] ?? ""}`}>
+                          {job.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right text-sm tabular-nums text-muted-foreground">
+                        {formatCAD(job.contract_value)}
+                      </td>
+                      <td className="px-6 py-4 text-right text-sm tabular-nums font-medium">
+                        {margin.estimatedMarginPct.toFixed(1)}%
+                      </td>
+                      <td className={`px-6 py-4 text-right text-sm tabular-nums font-semibold ${MARGIN_STATUS_COLOR[margin.status]}`}>
+                        {job.contract_value > 0 ? `${margin.actualMarginPct.toFixed(1)}%` : "—"}
+                      </td>
+                      <td className="px-6 py-4 text-right text-sm tabular-nums">
+                        <span className={margin.varianceDollar >= 0 ? "text-green-600" : "text-red-600"}>
+                          {margin.varianceDollar >= 0 ? "+" : ""}{formatCAD(margin.varianceDollar)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile cards */}
+            <div className="divide-y md:hidden">
+              {jobsWithMargin.map(({ job, margin }) => (
+                <Link
+                  key={job.id}
+                  href={`/dashboard/jobs/${job.id}`}
+                  className={`block border-l-4 ${MARGIN_BORDER[margin.status]} px-4 py-4 transition-colors hover:bg-muted/20`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-foreground truncate">{job.name}</p>
+                      <p className="text-xs text-muted-foreground">{job.customer_name ?? "No customer"}</p>
+                    </div>
+                    <span className={`ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[job.status] ?? ""}`}>
+                      {job.status}
+                    </span>
+                  </div>
+                  <div className="mt-3 flex items-center gap-4 text-xs">
+                    <div>
+                      <span className="text-muted-foreground">Contract: </span>
+                      <span className="font-medium tabular-nums">{formatCAD(job.contract_value)}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Margin: </span>
+                      <span className={`font-semibold tabular-nums ${MARGIN_STATUS_COLOR[margin.status]}`}>
+                        {job.contract_value > 0 ? `${margin.actualMarginPct.toFixed(1)}%` : "—"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className={`font-medium tabular-nums ${margin.varianceDollar >= 0 ? "text-green-600" : "text-red-600"}`}>
+                        {margin.varianceDollar >= 0 ? "+" : ""}{formatCAD(margin.varianceDollar)}
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
         )}
+        </div>
+
+        {/* Sidebar — Benchmarking */}
+        <div className="lg:col-span-1">
+          <BenchmarkCard />
+        </div>
       </div>
     </div>
   );

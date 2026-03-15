@@ -317,11 +317,12 @@ export function BillingClient({
             return (
               <div
                 key={planKey}
-                className={`relative flex flex-col rounded-xl border p-6 transition-all ${
+                className={`relative flex flex-col rounded-xl border p-6 transition-all animate-slide-up ${
                   isPopular
                     ? "border-emerald-300 shadow-lg shadow-emerald-500/10"
-                    : "border-gray-200 shadow-card"
+                    : "border-gray-200 shadow-card hover:shadow-card-hover"
                 } ${isCurrent ? "ring-2 ring-emerald-500 ring-offset-2" : ""} bg-white`}
+                style={{ animationDelay: `${index * 100}ms` }}
               >
                 {/* Popular badge */}
                 {isPopular && (

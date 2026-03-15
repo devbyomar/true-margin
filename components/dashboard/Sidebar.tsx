@@ -53,6 +53,7 @@ const navItems = [
   { label: COPY.NAV_SETTINGS, href: "/dashboard/settings", Icon: SettingsIcon },
 ];
 
+/* ─── Desktop Sidebar ─── */
 export function Sidebar() {
   const pathname = usePathname();
 
@@ -62,10 +63,8 @@ export function Sidebar() {
     >
       {/* Logo */}
       <div className="flex h-16 items-center gap-3 px-6">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500 shadow-lg shadow-emerald-500/30">
-          <svg className="h-4.5 w-4.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
-          </svg>
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/20 text-base font-bold text-white backdrop-blur-sm">
+          T
         </div>
         <span className="text-lg font-bold tracking-tight text-white">
           {COPY.APP_NAME}
@@ -131,5 +130,45 @@ export function Sidebar() {
         </div>
       </div>
     </aside>
+  );
+}
+
+/* ─── Mobile Bottom Navigation ─── */
+export function MobileBottomNav() {
+  const pathname = usePathname();
+
+  return (
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50 flex md:hidden items-stretch border-t bg-white/80 backdrop-blur-xl safe-area-pb"
+      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+      aria-label="Mobile navigation"
+    >
+      {navItems.map((item) => {
+        const isActive =
+          item.href === "/dashboard"
+            ? pathname === "/dashboard"
+            : pathname.startsWith(item.href);
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={cn(
+              "flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium transition-colors",
+              isActive
+                ? "text-emerald-600"
+                : "text-muted-foreground"
+            )}
+            aria-label={item.label}
+            aria-current={isActive ? "page" : undefined}
+          >
+            <item.Icon className={cn("h-5 w-5", isActive ? "text-emerald-600" : "text-muted-foreground/70")} />
+            <span>{item.label}</span>
+            {isActive && (
+              <div className="absolute top-0 h-0.5 w-8 rounded-full bg-emerald-500" />
+            )}
+          </Link>
+        );
+      })}
+    </nav>
   );
 }

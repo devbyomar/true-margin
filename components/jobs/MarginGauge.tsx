@@ -44,8 +44,8 @@ function formatCAD(amount: number): string {
   return new Intl.NumberFormat("en-CA", {
     style: "currency",
     currency: "CAD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(amount);
 }
 
@@ -107,7 +107,7 @@ export function MarginGauge({
 
         {/* Variance line */}
         <p className="mt-3 text-xs text-muted-foreground">
-          Estimated: {estimatedMarginPct.toFixed(1)}% · Variance:{" "}
+          Estimated: {estimatedMarginPct.toFixed(1)}% · {COPY.VARIANCE}:{" "}
           <span className={variance >= 0 ? "text-emerald-600" : "text-red-600"}>
             {varianceSign}{variance.toFixed(1)}%
           </span>

@@ -308,9 +308,19 @@ export function CompanySettingsForm({ company }: CompanySettingsFormProps) {
           {/* Overhead rate */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-1 px-5 py-4">
             <div className="pt-2.5">
-              <Label htmlFor="overhead_rate" className="text-sm font-medium text-muted-foreground">
-                {COPY.DEFAULT_OVERHEAD}
-              </Label>
+              <div className="flex items-center gap-1.5">
+                <Label htmlFor="overhead_rate" className="text-sm font-medium text-muted-foreground">
+                  {COPY.DEFAULT_OVERHEAD}
+                </Label>
+                <span className="group relative">
+                  <svg className="h-3.5 w-3.5 text-muted-foreground/60 cursor-help" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+                  </svg>
+                  <span className="pointer-events-none absolute -top-2 left-1/2 z-50 -translate-x-1/2 -translate-y-full w-56 rounded-lg bg-foreground px-3 py-2 text-xs text-white shadow-lg opacity-0 transition-opacity group-hover:opacity-100" role="tooltip">
+                    {COPY.OVERHEAD_TOOLTIP}
+                  </span>
+                </span>
+              </div>
             </div>
             <div className="sm:col-span-2">
               <div className="relative max-w-[200px]">
@@ -333,7 +343,7 @@ export function CompanySettingsForm({ company }: CompanySettingsFormProps) {
                 </p>
               )}
               <p className="text-[11px] text-muted-foreground mt-1.5">
-                Added to estimated costs for office, insurance, vehicle, etc.
+                {COPY.OVERHEAD_TOOLTIP}
               </p>
             </div>
           </div>

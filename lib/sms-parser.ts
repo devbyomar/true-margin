@@ -1,4 +1,4 @@
-import type { ParsedCostEntry, CostCategory } from "@/types";
+import type { ParsedCostEntry, CostCategory, ParsedTimeCommand } from "@/types";
 
 // Category keyword mappings
 const CATEGORY_KEYWORDS: ReadonlyArray<{
@@ -24,7 +24,21 @@ const CATEGORY_KEYWORDS: ReadonlyArray<{
 ];
 
 // Commands that are NOT cost entries
-const COMMANDS = /^(done|complete|finished|help|status|stop)$/i;
+const COMMANDS = /^(done|complete|finished|status)$/i;
+
+// Time tracking commands
+const TIME_START = /^(start|clock\s*in|begin|punch\s*in)$/i;
+const TIME_STOP = /^(stop|clock\s*out|end|punch\s*out|done)$/i;
+
+// Help command — handled separately
+const HELP_COMMAND = /^help$/i;
+
+/**
+ * Check if a message is a HELP command.
+ */
+export function isHelpCommand(text: string): boolean {
+  return HELP_COMMAND.test(text.trim());
+}
 
 /**
  * Parse a free-text SMS message into a structured cost entry.
@@ -37,6 +51,11 @@ export function parseSmsEntry(
   const trimmed = text.trim();
 
   if (!trimmed || COMMANDS.test(trimmed)) {
+    return null;
+  }
+
+  // Skip if it's a time tracking command
+  if (parseTimeCommand(trimmed) !== null) {
     return null;
   }
 
@@ -122,6 +141,45 @@ export function parseSmsEntry(
 export function extractJobCode(text: string): string | null {
   const match = text.match(/\bJOB-([A-Z0-9]{4})\b/i);
   return match ? `JOB-${match[1]!.toUpperCase()}` : null;
+}
+
+/**
+ * Check if a message is a time tracking command (start/stop).
+ * Returns null if not a time command.
+ */
+export function parseTimeCommand(text: string): ParsedTimeCommand | null {
+  const trimmed = text.trim();
+
+  // Remove job code prefix if present
+  const jobCode = extractJobCode(trimmed);
+  const withoutJobCode = trimmed.replace(/^JOB-[A-Z0-9]{4}\s*/i, "").trim();
+
+  // Check for stop first (since "done" could be either)
+  if (TIME_STOP.test(withoutJobCode)) {
+    return { command: "stop", jobCode, notes: null };
+  }
+
+  // Check for start
+  if (TIME_START.test(withoutJobCode)) {
+    return { command: "start", jobCode, notes: null };
+  }
+
+  // Check for start/stop with notes: "start installing ductwork"
+  const startWithNotes = withoutJobCode.match(
+    /^(?:start|clock\s*in|begin|punch\s*in)\s+(.+)$/i
+  );
+  if (startWithNotes?.[1]) {
+    return { command: "start", jobCode, notes: startWithNotes[1].trim() };
+  }
+
+  const stopWithNotes = withoutJobCode.match(
+    /^(?:stop|clock\s*out|end|punch\s*out|done)\s+(.+)$/i
+  );
+  if (stopWithNotes?.[1]) {
+    return { command: "stop", jobCode, notes: stopWithNotes[1].trim() };
+  }
+
+  return null;
 }
 
 function round2(n: number): number {

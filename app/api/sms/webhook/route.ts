@@ -1,11 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { validateRequest } from "twilio";
-import { parseSmsEntry, extractJobCode } from "@/lib/sms-parser";
+import { parseSmsEntry, extractJobCode, isHelpCommand, parseTimeCommand } from "@/lib/sms-parser";
 import { calculateMargin } from "@/lib/margin-calculator";
 import { normalizePhoneE164 } from "@/lib/twilio";
 import { COPY } from "@/lib/copy";
 import type { MarginStatus } from "@/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { ParsedTimeCommand } from "@/types";
 
 // Use service role client — webhook has no user session
 function getServiceClient() {
@@ -105,6 +107,17 @@ export async function POST(request: NextRequest) {
     });
 
     return twimlResponse(COPY.SMS_UNKNOWN_USER);
+  }
+
+  // Handle HELP command
+  if (isHelpCommand(body)) {
+    return twimlResponse(COPY.SMS_HELP);
+  }
+
+  // Handle time tracking commands (start/stop)
+  const timeCmd = parseTimeCommand(body);
+  if (timeCmd) {
+    return await handleTimeCommand(supabase, user, timeCmd, body, normalizedPhone);
   }
 
   // 2. Extract job code from message, or find most recent active job
@@ -234,6 +247,7 @@ export async function POST(request: NextRequest) {
       description: parsed.description,
       amount: parsed.amount,
       sms_raw: body,
+      validation_status: "pending",
     })
     .select("id")
     .single();
@@ -289,4 +303,232 @@ export async function POST(request: NextRequest) {
   const reply = `✓ ${amountFormatted} ${parsed.category} logged on ${smsCode}. Job margin: ${Math.round(margin.actualMarginPct)}% (${statusLabel})`;
 
   return twimlResponse(reply);
+}
+
+// ============================================================
+// Time Tracking via SMS
+// ============================================================
+
+async function handleTimeCommand(
+  supabase: SupabaseClient,
+  user: { id: string; company_id: string; role: string },
+  cmd: ParsedTimeCommand,
+  rawBody: string,
+  normalizedPhone: string
+): Promise<NextResponse> {
+  // Resolve job (same logic as cost entry)
+  let jobId: string | null = null;
+  let jobSmsCode: string | null = null;
+
+  if (cmd.jobCode) {
+    const { data: job } = await supabase
+      .from("jobs")
+      .select("id, sms_code")
+      .eq("sms_code", cmd.jobCode)
+      .eq("company_id", user.company_id)
+      .single();
+    if (job) {
+      jobId = job.id;
+      jobSmsCode = job.sms_code;
+    }
+  }
+
+  // Fallback to single active job
+  if (!jobId) {
+    const { data: activeJobs } = await supabase
+      .from("jobs")
+      .select("id, sms_code, name")
+      .eq("company_id", user.company_id)
+      .eq("status", "active")
+      .order("created_at", { ascending: false });
+
+    if (activeJobs && activeJobs.length === 1 && activeJobs[0]) {
+      jobId = activeJobs[0].id;
+      jobSmsCode = activeJobs[0].sms_code;
+    } else if (activeJobs && activeJobs.length > 1) {
+      const jobList = activeJobs
+        .slice(0, 5)
+        .map((j) => `${j.sms_code ?? "?"}: ${j.name}`)
+        .join("\n");
+      return twimlResponse(
+        `You have ${activeJobs.length} active jobs. Include a job code:\n${jobList}\n\nExample: ${activeJobs[0]?.sms_code ?? "JOB-XXXX"} start`
+      );
+    }
+  }
+
+  if (!jobId) {
+    return twimlResponse(
+      "No active job found. Include a job code like: JOB-A1B2 start"
+    );
+  }
+
+  const code = jobSmsCode ?? "JOB-????";
+
+  if (cmd.command === "start") {
+    // Check for existing active timer
+    const { data: activeTimer } = await supabase
+      .from("time_entries")
+      .select("id, job_id")
+      .eq("user_id", user.id)
+      .is("stopped_at", null)
+      .limit(1);
+
+    if (activeTimer && activeTimer.length > 0) {
+      // Find the job code of the active timer
+      const { data: activeJob } = await supabase
+        .from("jobs")
+        .select("sms_code")
+        .eq("id", activeTimer[0]!.job_id)
+        .single();
+
+      return twimlResponse(
+        `You're already clocked in on ${activeJob?.sms_code ?? "a job"}. Text 'stop' to clock out first.`
+      );
+    }
+
+    // Get labour rate
+    const { data: job } = await supabase
+      .from("jobs")
+      .select("estimated_labour_rate")
+      .eq("id", jobId)
+      .single();
+
+    const { data: company } = await supabase
+      .from("companies")
+      .select("labour_rate")
+      .eq("id", user.company_id)
+      .single();
+
+    const labourRate = job?.estimated_labour_rate ?? company?.labour_rate ?? 85;
+
+    // Create time entry
+    const { error: insertError } = await supabase
+      .from("time_entries")
+      .insert({
+        job_id: jobId,
+        company_id: user.company_id,
+        user_id: user.id,
+        started_at: new Date().toISOString(),
+        labour_rate: labourRate,
+        source: "sms",
+        notes: cmd.notes,
+      });
+
+    if (insertError) {
+      return twimlResponse(COPY.ERROR_GENERIC);
+    }
+
+    await supabase.from("sms_log").insert({
+      from_phone: normalizedPhone,
+      body: rawBody,
+      company_id: user.company_id,
+      job_id: jobId,
+      parsed_successfully: true,
+    });
+
+    const time = new Date().toLocaleTimeString("en-CA", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+      timeZone: "America/Toronto",
+    });
+
+    return twimlResponse(
+      `✓ Clocked in on ${code} at ${time}. Text 'stop' when done.`
+    );
+  }
+
+  // STOP command
+  const { data: activeTimer } = await supabase
+    .from("time_entries")
+    .select("*")
+    .eq("user_id", user.id)
+    .is("stopped_at", null)
+    .order("started_at", { ascending: false })
+    .limit(1);
+
+  if (!activeTimer || activeTimer.length === 0) {
+    return twimlResponse(
+      "You're not clocked in. Text 'start' to begin tracking time."
+    );
+  }
+
+  const entry = activeTimer[0]!;
+  const now = new Date();
+  const startedAt = new Date(entry.started_at);
+  const hoursRaw = (now.getTime() - startedAt.getTime()) / (1000 * 60 * 60);
+  const hours = Math.round(hoursRaw * 100) / 100;
+  const labourRate = entry.labour_rate ?? 85;
+  const amount = Math.round(hours * labourRate * 100) / 100;
+
+  // Create cost entry for the labour
+  const { data: costEntry } = await supabase
+    .from("cost_entries")
+    .insert({
+      job_id: entry.job_id,
+      company_id: user.company_id,
+      logged_by: user.id,
+      source: "sms",
+      category: "labour",
+      description: `${hours}h labour (SMS timer)${entry.notes ? ` — ${entry.notes}` : ""}`,
+      amount,
+      validation_status: "validated",
+    })
+    .select("id")
+    .single();
+
+  // Update time entry
+  await supabase
+    .from("time_entries")
+    .update({
+      stopped_at: now.toISOString(),
+      hours,
+      amount,
+      cost_entry_id: costEntry?.id ?? null,
+    })
+    .eq("id", entry.id);
+
+  // Get margin for reply
+  const { data: jobData } = await supabase
+    .from("jobs")
+    .select("contract_value, estimated_labour_hours, estimated_labour_rate, estimated_materials, estimated_subcontractor, estimated_overhead_rate, actual_cost, sms_code")
+    .eq("id", entry.job_id)
+    .single();
+
+  let marginReply = "";
+  if (jobData) {
+    const { data: company } = await supabase
+      .from("companies")
+      .select("labour_rate, overhead_rate")
+      .eq("id", user.company_id)
+      .single();
+
+    const lr = jobData.estimated_labour_rate ?? company?.labour_rate ?? 85;
+    const or = jobData.estimated_overhead_rate ?? company?.overhead_rate ?? 15;
+    const margin = calculateMargin({
+      contractValue: jobData.contract_value,
+      estimatedLabourHours: jobData.estimated_labour_hours,
+      labourRate: lr,
+      estimatedMaterials: jobData.estimated_materials,
+      estimatedSubcontractor: jobData.estimated_subcontractor,
+      overheadRate: or,
+      actualCost: jobData.actual_cost,
+    });
+    const statusLabel = STATUS_LABELS[margin.status] ?? margin.status;
+    marginReply = ` Job margin: ${Math.round(margin.actualMarginPct)}% (${statusLabel})`;
+  }
+
+  await supabase.from("sms_log").insert({
+    from_phone: normalizedPhone,
+    body: rawBody,
+    company_id: user.company_id,
+    job_id: entry.job_id,
+    cost_entry_id: costEntry?.id ?? null,
+    parsed_successfully: true,
+  });
+
+  const jobCode = jobData?.sms_code ?? code;
+  return twimlResponse(
+    `✓ Clocked out on ${jobCode}. ${hours}h logged = $${amount.toFixed(2)}.${marginReply}`
+  );
 }
