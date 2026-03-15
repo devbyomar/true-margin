@@ -59,7 +59,7 @@ function formatDate(dateStr: string): string {
   });
 }
 
-export function ChangeOrderList({ changeOrders, jobId: _jobId }: ChangeOrderListProps) {
+export function ChangeOrderList({ changeOrders }: ChangeOrderListProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const appUrl = typeof window !== "undefined" ? window.location.origin : "";
 
