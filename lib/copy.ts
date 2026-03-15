@@ -280,6 +280,18 @@ export const COPY = {
   DELETE: "Delete",
   EDIT: "Edit",
   BACK: "Back",
+
+  // Cost entry editing & receipts
+  EDIT_ENTRY: "Edit Entry",
+  SAVE_ENTRY: "Save Changes",
+  EDITING_ENTRY: "Saving…",
+  ATTACH_RECEIPT: "Attach Receipt",
+  UPLOAD_RECEIPT: "Upload Receipt",
+  UPLOADING_RECEIPT: "Uploading…",
+  RECEIPT_LABEL: "Receipt",
+  VIEW_RECEIPT: "View Receipt",
+  REMOVE_RECEIPT: "Remove Receipt",
+  RECEIPT_FORMATS: "JPG, PNG, WebP, or PDF (max 10MB)",
 } as const;
 
 // Province options for select dropdown
