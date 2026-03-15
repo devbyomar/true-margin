@@ -18,7 +18,9 @@ export function TopBar({ userName, companyName }: TopBarProps) {
     .toUpperCase();
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-white/80 backdrop-blur-xl px-4 md:h-16 md:px-6">
+    <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-white/90 backdrop-blur-xl px-3 md:h-16 md:px-6"
+      style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+    >
       {/* Mobile logo */}
       <div className="flex items-center gap-2.5 md:hidden">
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500 text-xs font-bold text-white shadow-sm">

@@ -88,9 +88,9 @@ export function MarginGauge({
   return (
     <div className="overflow-hidden rounded-xl border bg-white shadow-card">
       {/* Main margin display */}
-      <div className="flex flex-col items-center px-6 py-8">
+      <div className="flex flex-col items-center px-5 py-6 sm:px-6 sm:py-8">
         <p
-          className={`text-6xl font-bold tabular-nums tracking-tighter ${config.color} transition-colors duration-300`}
+          className={`text-5xl font-bold tabular-nums tracking-tighter sm:text-6xl ${config.color} transition-colors duration-300`}
           aria-label={`Current margin: ${actualMarginPct.toFixed(1)} percent`}
         >
           {displayed.toFixed(1)}%
@@ -115,10 +115,10 @@ export function MarginGauge({
       </div>
 
       {/* Budget progress bar */}
-      <div className="border-t bg-muted/20 px-6 py-4">
+      <div className="border-t bg-muted/20 px-4 py-3 sm:px-6 sm:py-4">
         <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
           <span>Budget spent</span>
-          <span className="font-medium tabular-nums">{formatCAD(actualCost)} / {formatCAD(contractValue)}</span>
+          <span className="font-medium tabular-nums text-[11px] sm:text-xs">{formatCAD(actualCost)} / {formatCAD(contractValue)}</span>
         </div>
         <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-muted/50">
           {/* Budget estimate marker */}
@@ -147,17 +147,17 @@ export function MarginGauge({
 
       {/* Quick stats */}
       <div className="grid grid-cols-3 divide-x border-t">
-        <div className="px-4 py-3 text-center">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">Contract</p>
-          <p className="mt-0.5 text-sm font-bold tabular-nums text-foreground">{formatCAD(contractValue)}</p>
+        <div className="px-2 py-3 text-center sm:px-4">
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70 sm:text-[11px]">Contract</p>
+          <p className="mt-0.5 text-xs font-bold tabular-nums text-foreground sm:text-sm">{formatCAD(contractValue)}</p>
         </div>
-        <div className="px-4 py-3 text-center">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">Est. Cost</p>
-          <p className="mt-0.5 text-sm font-bold tabular-nums text-foreground">{formatCAD(estimatedCost)}</p>
+        <div className="px-2 py-3 text-center sm:px-4">
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70 sm:text-[11px]">Est. Cost</p>
+          <p className="mt-0.5 text-xs font-bold tabular-nums text-foreground sm:text-sm">{formatCAD(estimatedCost)}</p>
         </div>
-        <div className="px-4 py-3 text-center">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">Actual</p>
-          <p className={`mt-0.5 text-sm font-bold tabular-nums ${actualCost > estimatedCost ? "text-red-600" : "text-emerald-600"}`}>
+        <div className="px-2 py-3 text-center sm:px-4">
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70 sm:text-[11px]">Actual</p>
+          <p className={`mt-0.5 text-xs font-bold tabular-nums sm:text-sm ${actualCost > estimatedCost ? "text-red-600" : "text-emerald-600"}`}>
             {formatCAD(actualCost)}
           </p>
         </div>

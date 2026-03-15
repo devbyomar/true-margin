@@ -139,7 +139,7 @@ export function MobileBottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 flex md:hidden items-stretch border-t bg-white/80 backdrop-blur-xl safe-area-pb"
+      className="fixed bottom-0 left-0 right-0 z-50 flex md:hidden items-stretch border-t bg-white/95 backdrop-blur-xl"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       aria-label="Mobile navigation"
     >
@@ -153,7 +153,7 @@ export function MobileBottomNav() {
             key={item.href}
             href={item.href}
             className={cn(
-              "flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium transition-colors",
+              "relative flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 min-h-[48px] text-[10px] font-medium transition-colors active:scale-95",
               isActive
                 ? "text-emerald-600"
                 : "text-muted-foreground"
@@ -164,7 +164,7 @@ export function MobileBottomNav() {
             <item.Icon className={cn("h-5 w-5", isActive ? "text-emerald-600" : "text-muted-foreground/70")} />
             <span>{item.label}</span>
             {isActive && (
-              <div className="absolute top-0 h-0.5 w-8 rounded-full bg-emerald-500" />
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 h-0.5 w-8 rounded-full bg-emerald-500" />
             )}
           </Link>
         );
