@@ -1,8 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient as createAuthClient } from "@/lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
 import { extractLineItemsFromImage, validateImageInput } from "@/lib/ocr-parser";
 
 export const dynamic = "force-dynamic";
+
+const BUCKET_NAME = "invoice-scans";
 
 /**
  * POST /api/ocr/scan
@@ -10,7 +13,13 @@ export const dynamic = "force-dynamic";
  * Body: { job_id: string, image_url: string } OR multipart form with file
  */
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
+  const supabase = await createAuthClient();
+
+  // Service role client for storage operations (bucket creation + upload)
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
 
   const {
     data: { user },
@@ -34,6 +43,8 @@ export async function POST(request: NextRequest) {
   let jobId: string;
   let imageUrl: string;
   let fileName: string | null = null;
+  let fileBuffer: Buffer | null = null;
+  let fileMimeType: string | null = null;
 
   if (contentType.includes("multipart/form-data")) {
     // Handle file upload
@@ -72,13 +83,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Upload to Supabase storage
+    // Upload to Supabase storage (using admin client for bucket access)
     const fileExt = file.name.split(".").pop() ?? "jpg";
     const filePath = `${dbUser.company_id}/${jobId}/${Date.now()}.${fileExt}`;
 
+    // Ensure bucket exists
+    const { data: buckets } = await supabaseAdmin.storage.listBuckets();
+    const bucketExists = buckets?.some((b) => b.id === BUCKET_NAME);
+    if (!bucketExists) {
+      await supabaseAdmin.storage.createBucket(BUCKET_NAME, {
+        public: false,
+        fileSizeLimit: 10 * 1024 * 1024, // 10MB
+        allowedMimeTypes: [
+          "image/jpeg",
+          "image/png",
+          "image/webp",
+          "application/pdf",
+        ],
+      });
+    }
+
     const arrayBuffer = await file.arrayBuffer();
-    const { error: uploadError } = await supabase.storage
-      .from("invoice-scans")
+    fileBuffer = Buffer.from(arrayBuffer);
+    fileMimeType = file.type;
+
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from(BUCKET_NAME)
       .upload(filePath, arrayBuffer, {
         contentType: file.type,
         upsert: false,
@@ -91,17 +121,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get public URL for the uploaded file
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from("invoice-scans").getPublicUrl(filePath);
-
-    // For private buckets, we need a signed URL
-    const { data: signedData } = await supabase.storage
-      .from("invoice-scans")
+    // Get signed URL for the uploaded file (private bucket)
+    const { data: signedData } = await supabaseAdmin.storage
+      .from(BUCKET_NAME)
       .createSignedUrl(filePath, 3600); // 1 hour
 
-    imageUrl = signedData?.signedUrl ?? publicUrl;
+    imageUrl = signedData?.signedUrl ?? "";
+    if (!imageUrl) {
+      return NextResponse.json(
+        { error: "Failed to generate signed URL for uploaded file" },
+        { status: 500 }
+      );
+    }
   } else {
     // JSON body with image_url
     const body = (await request.json()) as {
@@ -160,8 +191,12 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Run OCR extraction
-    const { lineItems, rawText } = await extractLineItemsFromImage(imageUrl);
+    // Run OCR extraction — pass buffer for PDFs so we can use Files API
+    const { lineItems, rawText } = await extractLineItemsFromImage(
+      imageUrl,
+      fileBuffer ?? undefined,
+      fileMimeType ?? undefined
+    );
 
     // Update scan record with results
     await supabase

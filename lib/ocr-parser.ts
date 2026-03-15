@@ -9,24 +9,7 @@ const VALID_CATEGORIES: CostCategory[] = [
   "other",
 ];
 
-/**
- * Extract line items from an invoice image using GPT-4 Vision.
- * Returns structured line items with category, description, amount, and confidence.
- */
-export async function extractLineItemsFromImage(
-  imageUrl: string
-): Promise<{
-  lineItems: DocumentScanLineItem[];
-  rawText: string;
-}> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is not configured");
-  }
-
-  const openai = new OpenAI({ apiKey });
-
-  const systemPrompt = `You are an invoice/receipt parser for a Canadian construction and trades company. 
+const SYSTEM_PROMPT = `You are an invoice/receipt parser for a Canadian construction and trades company.
 Your job is to extract line items from invoices, receipts, and purchase orders.
 
 For each line item, determine:
@@ -42,7 +25,7 @@ Rules:
 - Do NOT include totals if individual line items are present
 - Amounts should be numbers without currency symbols
 - For materials/supplies stores (Home Depot, RONA, etc.), categorize as "materials"
-- For equipment rental, categorize as "equipment"  
+- For equipment rental, categorize as "equipment"
 - For subcontractor invoices, categorize as "subcontractor"
 - If you cannot determine the category, use "other" with confidence "low"
 
@@ -61,10 +44,92 @@ Respond ONLY with valid JSON in this exact format:
   ]
 }`;
 
+/**
+ * Extract line items from an invoice image or PDF using GPT-4o.
+ * - Images (JPG/PNG/WebP): sent as vision image_url
+ * - PDFs: uploaded via Files API then sent as file reference
+ */
+export async function extractLineItemsFromImage(
+  imageUrl: string,
+  fileBuffer?: Buffer,
+  mimeType?: string
+): Promise<{
+  lineItems: DocumentScanLineItem[];
+  rawText: string;
+}> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY is not configured");
+  }
+
+  const openai = new OpenAI({ apiKey });
+
+  // If a raw file buffer is provided and it's a PDF, use the Files API
+  if (fileBuffer && mimeType === "application/pdf") {
+    return extractFromPdf(openai, fileBuffer);
+  }
+
+  // Otherwise use Vision (image URL or data URI)
+  return extractFromImageUrl(openai, imageUrl);
+}
+
+/**
+ * Send a PDF to GPT-4o using the OpenAI Files API for text extraction.
+ */
+async function extractFromPdf(
+  openai: OpenAI,
+  pdfBuffer: Buffer
+): Promise<{ lineItems: DocumentScanLineItem[]; rawText: string }> {
+  // Convert Buffer to a plain ArrayBuffer to satisfy TypeScript
+  const arrayBuffer = pdfBuffer.buffer.slice(
+    pdfBuffer.byteOffset,
+    pdfBuffer.byteOffset + pdfBuffer.byteLength
+  ) as ArrayBuffer;
+
+  // Upload PDF to OpenAI Files API
+  const file = await openai.files.create({
+    file: new File([arrayBuffer], "invoice.pdf", { type: "application/pdf" }),
+    purpose: "assistants",
+  });
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `Extract all line items from this PDF invoice/receipt. File ID: ${file.id}. Return JSON only.`,
+            },
+          ],
+        },
+      ],
+      max_tokens: 2000,
+      temperature: 0.1,
+    });
+
+    const content = response.choices[0]?.message?.content?.trim() ?? "";
+    return parseOcrResponse(content);
+  } finally {
+    // Clean up the uploaded file
+    await openai.files.delete(file.id).catch(() => null);
+  }
+}
+
+/**
+ * Send an image URL or data URI to GPT-4o Vision.
+ */
+async function extractFromImageUrl(
+  openai: OpenAI,
+  imageUrl: string
+): Promise<{ lineItems: DocumentScanLineItem[]; rawText: string }> {
   const response = await openai.chat.completions.create({
     model: "gpt-4o",
     messages: [
-      { role: "system", content: systemPrompt },
+      { role: "system", content: SYSTEM_PROMPT },
       {
         role: "user",
         content: [
@@ -84,10 +149,7 @@ Respond ONLY with valid JSON in this exact format:
   });
 
   const content = response.choices[0]?.message?.content?.trim() ?? "";
-
-  // Parse the JSON response
-  const parsed = parseOcrResponse(content);
-  return parsed;
+  return parseOcrResponse(content);
 }
 
 /**
