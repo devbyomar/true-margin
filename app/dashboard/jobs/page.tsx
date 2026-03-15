@@ -41,7 +41,17 @@ function formatCAD(amount: number): string {
   }).format(amount);
 }
 
-export default async function JobsPage() {
+export const dynamic = "force-dynamic";
+
+interface JobsPageProps {
+  searchParams: Promise<{ status?: string; filter?: string }>;
+}
+
+export default async function JobsPage({ searchParams }: JobsPageProps) {
+  const params = await searchParams;
+  const statusFilter = params.status; // e.g. "active", "estimating", "closed"
+  const marginFilter = params.filter; // e.g. "at_risk"
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -66,13 +76,44 @@ export default async function JobsPage() {
     overhead_rate: number;
   } | null;
 
-  const { data: jobs } = await supabase
+  let query = supabase
     .from("jobs")
     .select("*")
     .eq("company_id", profile.company_id)
     .order("created_at", { ascending: false });
 
-  const jobList = (jobs ?? []) as Job[];
+  // Apply status filter if present (e.g. ?status=active)
+  if (statusFilter) {
+    query = query.eq("status", statusFilter);
+  }
+
+  const { data: jobs } = await query;
+
+  let jobList = (jobs ?? []) as Job[];
+
+  // Apply margin-based filter client-side (requires computing margins)
+  if (marginFilter === "at_risk") {
+    jobList = jobList.filter((job) => {
+      const labourRate = job.estimated_labour_rate ?? company?.labour_rate ?? 85;
+      const overheadRate = job.estimated_overhead_rate ?? company?.overhead_rate ?? 15;
+      const margin = calculateMargin({
+        contractValue: job.contract_value,
+        estimatedLabourHours: job.estimated_labour_hours,
+        labourRate,
+        estimatedMaterials: job.estimated_materials,
+        estimatedSubcontractor: job.estimated_subcontractor,
+        overheadRate,
+        actualCost: job.actual_cost,
+      });
+      return margin.status === "at_risk" || margin.status === "over_budget";
+    });
+  }
+
+  const activeFilterLabel = marginFilter === "at_risk"
+    ? "At Risk"
+    : statusFilter
+      ? STATUS_LABELS[statusFilter] ?? statusFilter
+      : null;
 
   return (
     <div className="space-y-6">
@@ -82,7 +123,7 @@ export default async function JobsPage() {
             {COPY.JOBS_TITLE}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {jobList.length} {jobList.length === 1 ? "job" : "jobs"} total
+            {jobList.length} {jobList.length === 1 ? "job" : "jobs"}{activeFilterLabel ? " matching filter" : " total"}
           </p>
         </div>
         <Link href="/dashboard/jobs/new">
@@ -94,6 +135,24 @@ export default async function JobsPage() {
           </Button>
         </Link>
       </div>
+
+      {/* Active filter pill */}
+      {activeFilterLabel && (
+        <div className="flex items-center gap-2 animate-fade-in">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700 border border-emerald-200">
+            Filtered: {activeFilterLabel}
+            <Link
+              href="/dashboard/jobs"
+              className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-emerald-200 text-emerald-700 hover:bg-emerald-300 transition-colors"
+              aria-label="Clear filter"
+            >
+              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </Link>
+          </span>
+        </div>
+      )}
 
       {jobList.length === 0 ? (
         <div className="relative overflow-hidden rounded-xl border border-dashed border-emerald-200 bg-gradient-to-br from-emerald-50/50 to-teal-50/30 p-8 text-center md:p-12 animate-fade-in">
