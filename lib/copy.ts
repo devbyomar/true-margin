@@ -57,7 +57,21 @@ export const COPY = {
   ESTIMATED_MARGIN: "Estimated Margin",
   CURRENT_MARGIN: "current margin",
   ACTUAL_COST: "Actual Cost",
-  VARIANCE: "Variance",
+  VARIANCE: "Over/Under Budget",
+  EDIT_JOB: "Edit Job",
+  SAVE_JOB: "Save Changes",
+  DELETE_COST_ENTRY: "Delete Entry",
+  DELETE_COST_CONFIRM: "Are you sure you want to delete this cost entry? This cannot be undone.",
+  STATUS_CHANGE_CONFIRM: "Are you sure you want to change this job's status?",
+  COST_BREAKDOWN_TITLE: "Cost Breakdown by Category",
+  ESTIMATED_VS_ACTUAL: "Estimated vs. Actual",
+  SEARCH_JOBS: "Search jobs…",
+  EXPORT_CSV: "Export CSV",
+  OVERHEAD_TOOLTIP: "Covers office, insurance, vehicle, and admin costs not directly billed to the job.",
+  WORST_JOB_TITLE: "Needs Attention",
+  MARGIN_TREND_UP: "up from last month",
+  MARGIN_TREND_DOWN: "down from last month",
+  MARGIN_TREND_SAME: "same as last month",
 
   // Status
   STATUS_ON_TRACK: "On Track",
@@ -187,6 +201,8 @@ export const COPY = {
     "TrueMargin: Your number isn't linked to an account. Ask your PM to add you.",
   SMS_PARSE_ERROR:
     "Couldn't read that. Try: 'JOB-4821 materials 340 copper pipe'. Reply HELP for examples.",
+  SMS_HELP:
+    "TrueMargin SMS commands:\n• materials 340 copper pipe\n• labour 4hrs\n• sub 850 electrical rough in\n• equip 200 rental\n• JOB-XXXX materials 340 pipe\n\nInclude a job code if you have multiple active jobs.",
 
   // Misc
   LOADING: "Loading...",

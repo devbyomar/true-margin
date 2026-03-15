@@ -133,6 +133,18 @@ export default async function JobDetailPage({ params }: RouteParams) {
   const statusLabel = STATUS_LABELS[typedJob.status] ?? typedJob.status;
   const statusBadge = STATUS_BADGE[typedJob.status] ?? STATUS_BADGE.estimating;
 
+  // Compute cost breakdown by category
+  const categoryTotals: Record<string, number> = {};
+  for (const e of entries) {
+    categoryTotals[e.category] = (categoryTotals[e.category] ?? 0) + e.amount;
+  }
+  const labourEstimate = typedJob.estimated_labour_hours * labourRate;
+  const estimateByCategory: Record<string, number> = {
+    labour: labourEstimate,
+    materials: typedJob.estimated_materials,
+    subcontractor: typedJob.estimated_subcontractor,
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -168,6 +180,16 @@ export default async function JobDetailPage({ params }: RouteParams) {
         </div>
 
         <div className="flex shrink-0 gap-2">
+          <Link
+            href={`/dashboard/jobs/${id}/edit`}
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border bg-white px-3 text-sm font-semibold text-foreground shadow-sm transition-all hover:bg-muted/50 active:scale-[0.98]"
+            aria-label={COPY.EDIT_JOB}
+          >
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+            </svg>
+            {COPY.EDIT_JOB}
+          </Link>
           <JobDetailActions jobId={id} currentStatus={typedJob.status} />
           <Link
             href={`/dashboard/jobs/${id}/change-orders/new`}
@@ -246,6 +268,95 @@ export default async function JobDetailPage({ params }: RouteParams) {
 
           {/* Change orders */}
           <ChangeOrderList changeOrders={changeOrders} jobId={id} />
+
+          {/* Cost breakdown by category */}
+          {entries.length > 0 && (
+            <div className="overflow-hidden rounded-xl border bg-white shadow-card">
+              <div className="border-b px-5 py-3">
+                <h3 className="text-sm font-semibold text-foreground">{COPY.COST_BREAKDOWN_TITLE}</h3>
+              </div>
+              <div className="space-y-3 px-5 py-4">
+                {(["labour", "materials", "subcontractor", "equipment", "other"] as const).map((cat) => {
+                  const actual = categoryTotals[cat] ?? 0;
+                  if (actual === 0) return null;
+                  const est = estimateByCategory[cat] ?? 0;
+                  const maxVal = Math.max(actual, est, 1);
+                  const barPct = Math.min((actual / maxVal) * 100, 100);
+                  const isOver = est > 0 && actual > est;
+                  return (
+                    <div key={cat}>
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="font-medium capitalize text-foreground">{cat}</span>
+                        <span className={`tabular-nums font-semibold ${isOver ? "text-red-600" : "text-foreground"}`}>{formatCAD(actual)}</span>
+                      </div>
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-muted/50">
+                        <div
+                          className={`h-full rounded-full transition-all ${isOver ? "bg-red-400" : "bg-emerald-400"}`}
+                          style={{ width: `${barPct}%` }}
+                        />
+                      </div>
+                      {est > 0 && (
+                        <p className="mt-0.5 text-[11px] text-muted-foreground/70 tabular-nums">
+                          Est. {formatCAD(est)}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Estimated vs Actual summary */}
+          {entries.length > 0 && (
+            <div className="overflow-hidden rounded-xl border bg-white shadow-card">
+              <div className="border-b px-5 py-3">
+                <h3 className="text-sm font-semibold text-foreground">{COPY.ESTIMATED_VS_ACTUAL}</h3>
+              </div>
+              <dl className="divide-y text-sm">
+                <div className="flex items-center justify-between px-5 py-2.5">
+                  <dt className="text-muted-foreground">Labour</dt>
+                  <dd className="flex gap-3 tabular-nums text-right">
+                    <span className="text-muted-foreground">{formatCAD(labourEstimate)}</span>
+                    <span className="font-medium">→</span>
+                    <span className={`font-semibold ${(categoryTotals["labour"] ?? 0) > labourEstimate ? "text-red-600" : "text-emerald-600"}`}>
+                      {formatCAD(categoryTotals["labour"] ?? 0)}
+                    </span>
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between px-5 py-2.5">
+                  <dt className="text-muted-foreground">Materials</dt>
+                  <dd className="flex gap-3 tabular-nums text-right">
+                    <span className="text-muted-foreground">{formatCAD(typedJob.estimated_materials)}</span>
+                    <span className="font-medium">→</span>
+                    <span className={`font-semibold ${(categoryTotals["materials"] ?? 0) > typedJob.estimated_materials ? "text-red-600" : "text-emerald-600"}`}>
+                      {formatCAD(categoryTotals["materials"] ?? 0)}
+                    </span>
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between px-5 py-2.5">
+                  <dt className="text-muted-foreground">Subcontractor</dt>
+                  <dd className="flex gap-3 tabular-nums text-right">
+                    <span className="text-muted-foreground">{formatCAD(typedJob.estimated_subcontractor)}</span>
+                    <span className="font-medium">→</span>
+                    <span className={`font-semibold ${(categoryTotals["subcontractor"] ?? 0) > typedJob.estimated_subcontractor ? "text-red-600" : "text-emerald-600"}`}>
+                      {formatCAD(categoryTotals["subcontractor"] ?? 0)}
+                    </span>
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between px-5 py-2.5 bg-muted/20">
+                  <dt className="font-semibold text-foreground">Total</dt>
+                  <dd className="flex gap-3 tabular-nums text-right">
+                    <span className="font-semibold text-muted-foreground">{formatCAD(margin.estimatedCost)}</span>
+                    <span className="font-medium">→</span>
+                    <span className={`font-bold ${margin.actualCost > margin.estimatedCost ? "text-red-600" : "text-emerald-600"}`}>
+                      {formatCAD(margin.actualCost)}
+                    </span>
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          )}
 
           {/* Notes */}
           {typedJob.notes && (

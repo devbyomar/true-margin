@@ -24,7 +24,17 @@ const CATEGORY_KEYWORDS: ReadonlyArray<{
 ];
 
 // Commands that are NOT cost entries
-const COMMANDS = /^(done|complete|finished|help|status|stop)$/i;
+const COMMANDS = /^(done|complete|finished|status|stop)$/i;
+
+// Help command — handled separately
+const HELP_COMMAND = /^help$/i;
+
+/**
+ * Check if a message is a HELP command.
+ */
+export function isHelpCommand(text: string): boolean {
+  return HELP_COMMAND.test(text.trim());
+}
 
 /**
  * Parse a free-text SMS message into a structured cost entry.

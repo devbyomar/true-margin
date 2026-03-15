@@ -30,8 +30,8 @@ function formatCAD(amount: number): string {
   return new Intl.NumberFormat("en-CA", {
     style: "currency",
     currency: "CAD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(amount);
 }
 
@@ -101,6 +101,48 @@ export default async function DashboardPage() {
         jobsWithContractValue.length
       : null;
 
+  // Find worst performing active job
+  const worstJob =
+    jobsWithMargin.length > 0
+      ? jobsWithMargin.reduce((worst, curr) =>
+          curr.margin.actualMarginPct < worst.margin.actualMarginPct ? curr : worst
+        )
+      : null;
+
+  // Compute margin trend: compare current month avg vs last month
+  const now = new Date();
+  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+  // Fetch closed jobs for last 2 months for trend
+  const { data: trendJobsData } = await supabase
+    .from("jobs")
+    .select("*")
+    .eq("company_id", companyId)
+    .gte("closed_at", lastMonthStart.toISOString())
+    .order("closed_at", { ascending: false });
+
+  const trendJobs = (trendJobsData ?? []) as Job[];
+
+  const thisMonthJobs = trendJobs.filter((j) => j.closed_at && new Date(j.closed_at) >= thisMonthStart);
+  const lastMonthJobs = trendJobs.filter(
+    (j) => j.closed_at && new Date(j.closed_at) >= lastMonthStart && new Date(j.closed_at) < thisMonthStart
+  );
+
+  const thisMonthAvg = thisMonthJobs.length > 0
+    ? thisMonthJobs.reduce((s, j) => s + computeJobMargin(j).actualMarginPct, 0) / thisMonthJobs.length
+    : null;
+  const lastMonthAvg = lastMonthJobs.length > 0
+    ? lastMonthJobs.reduce((s, j) => s + computeJobMargin(j).actualMarginPct, 0) / lastMonthJobs.length
+    : null;
+
+  let marginTrend: "up" | "down" | "same" | null = null;
+  let marginDelta = 0;
+  if (thisMonthAvg !== null && lastMonthAvg !== null) {
+    marginDelta = thisMonthAvg - lastMonthAvg;
+    marginTrend = marginDelta > 0.5 ? "up" : marginDelta < -0.5 ? "down" : "same";
+  }
+
   return (
     <div className="space-y-8">
       {/* Welcome header */}
@@ -166,10 +208,51 @@ export default async function DashboardPage() {
             <p className="mt-3 text-3xl font-bold tabular-nums text-foreground">
               {avgMargin !== null ? `${avgMargin.toFixed(1)}%` : "—"}
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">Across {jobsWithContractValue.length} active job{jobsWithContractValue.length !== 1 ? "s" : ""}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Across {jobsWithContractValue.length} active job{jobsWithContractValue.length !== 1 ? "s" : ""}
+              {marginTrend && (
+                <span className={`ml-1.5 inline-flex items-center gap-0.5 ${marginTrend === "up" ? "text-emerald-600" : marginTrend === "down" ? "text-red-600" : "text-muted-foreground"}`}>
+                  {marginTrend === "up" && "↑"}
+                  {marginTrend === "down" && "↓"}
+                  {marginTrend === "same" && "→"}
+                  {Math.abs(marginDelta).toFixed(1)}% {marginTrend === "up" ? COPY.MARGIN_TREND_UP : marginTrend === "down" ? COPY.MARGIN_TREND_DOWN : COPY.MARGIN_TREND_SAME}
+                </span>
+              )}
+            </p>
           </div>
         </Link>
       </div>
+
+      {/* Worst performing job callout */}
+      {worstJob && worstJob.margin.status !== "on_track" && (
+        <Link
+          href={`/dashboard/jobs/${worstJob.job.id}`}
+          className="group block animate-slide-up"
+          style={{ animationDelay: "150ms" }}
+          aria-label={`${COPY.WORST_JOB_TITLE}: ${worstJob.job.name}`}
+        >
+          <div className="relative overflow-hidden rounded-xl border border-red-200 bg-gradient-to-r from-red-50/80 to-amber-50/40 p-5 shadow-card transition-all duration-300 hover:shadow-card-hover">
+            <div className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-red-100 text-red-600">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+            </div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-red-600/80">{COPY.WORST_JOB_TITLE}</p>
+            <p className="mt-1 text-lg font-bold text-foreground group-hover:text-red-700 transition-colors">{worstJob.job.name}</p>
+            <div className="mt-2 flex items-center gap-4 text-sm">
+              <span className="text-muted-foreground">
+                Margin: <span className="font-bold text-red-600 tabular-nums">{worstJob.margin.actualMarginPct.toFixed(1)}%</span>
+              </span>
+              <span className="text-muted-foreground">
+                {COPY.VARIANCE}: <span className={`font-semibold tabular-nums ${worstJob.margin.varianceDollar >= 0 ? "text-emerald-600" : "text-red-600"}`}>{worstJob.margin.varianceDollar >= 0 ? "+" : ""}{formatCAD(worstJob.margin.varianceDollar)}</span>
+              </span>
+              {worstJob.job.customer_name && (
+                <span className="text-muted-foreground">{worstJob.job.customer_name}</span>
+              )}
+            </div>
+          </div>
+        </Link>
+      )}
 
       {/* Job table or empty state */}
       <div className="animate-slide-up" style={{ animationDelay: "200ms" }}>
@@ -221,7 +304,7 @@ export default async function DashboardPage() {
                     <th className="px-6 py-3 text-right">Contract</th>
                     <th className="px-6 py-3 text-right">Est. Margin</th>
                     <th className="px-6 py-3 text-right">Actual Margin</th>
-                    <th className="px-6 py-3 text-right">Variance</th>
+                    <th className="px-6 py-3 text-right">{COPY.VARIANCE}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">

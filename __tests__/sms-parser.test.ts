@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseSmsEntry, extractJobCode } from "@/lib/sms-parser";
+import { parseSmsEntry, extractJobCode, isHelpCommand } from "@/lib/sms-parser";
 
 // ============================================================
 // SMS Parser — Unit Tests
@@ -195,5 +195,31 @@ describe("extractJobCode", () => {
 
   it("returns null for empty string", () => {
     expect(extractJobCode("")).toBeNull();
+  });
+});
+
+describe("isHelpCommand", () => {
+  it('recognises "help" (lowercase)', () => {
+    expect(isHelpCommand("help")).toBe(true);
+  });
+
+  it('recognises "HELP" (uppercase)', () => {
+    expect(isHelpCommand("HELP")).toBe(true);
+  });
+
+  it('recognises "Help" (mixed case)', () => {
+    expect(isHelpCommand("Help")).toBe(true);
+  });
+
+  it("trims whitespace", () => {
+    expect(isHelpCommand("  help  ")).toBe(true);
+  });
+
+  it("rejects non-help text", () => {
+    expect(isHelpCommand("materials 340")).toBe(false);
+  });
+
+  it("rejects partial help in longer string", () => {
+    expect(isHelpCommand("need help with this")).toBe(false);
   });
 });

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { validateRequest } from "twilio";
-import { parseSmsEntry, extractJobCode } from "@/lib/sms-parser";
+import { parseSmsEntry, extractJobCode, isHelpCommand } from "@/lib/sms-parser";
 import { calculateMargin } from "@/lib/margin-calculator";
 import { normalizePhoneE164 } from "@/lib/twilio";
 import { COPY } from "@/lib/copy";
@@ -105,6 +105,11 @@ export async function POST(request: NextRequest) {
     });
 
     return twimlResponse(COPY.SMS_UNKNOWN_USER);
+  }
+
+  // Handle HELP command
+  if (isHelpCommand(body)) {
+    return twimlResponse(COPY.SMS_HELP);
   }
 
   // 2. Extract job code from message, or find most recent active job
