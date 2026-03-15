@@ -4,7 +4,6 @@ import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { COPY, COST_CATEGORY_OPTIONS } from "@/lib/copy";
-import type { CostCategory } from "@/types";
 import type { DocumentScanLineItem } from "@/types";
 
 interface InvoiceScannerProps {

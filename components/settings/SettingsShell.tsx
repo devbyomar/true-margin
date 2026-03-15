@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { COPY } from "@/lib/copy";
 import {
@@ -49,8 +48,6 @@ export function SettingsShell({
   title,
   description,
 }: SettingsShellProps) {
-  const pathname = usePathname();
-
   return (
     <div className="space-y-8 animate-slide-up">
       {/* Page header */}
