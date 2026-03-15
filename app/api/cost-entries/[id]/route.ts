@@ -7,6 +7,7 @@ const updateCostEntrySchema = z.object({
   description: z.string().nullable().optional(),
   amount: z.number().min(0.01, "Amount must be greater than 0").optional(),
   validation_status: z.enum(["pending", "validated", "rejected"]).optional(),
+  receipt_url: z.string().url().nullable().optional(),
 });
 
 interface RouteParams {
