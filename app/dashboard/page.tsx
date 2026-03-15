@@ -116,7 +116,7 @@ export default async function DashboardPage() {
       {/* Stat cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 animate-slide-up" style={{ animationDelay: "100ms" }}>
         {/* Active Jobs */}
-        <div className="group relative overflow-hidden rounded-xl border bg-white p-6 shadow-card transition-all duration-300 hover:shadow-card-hover">
+        <Link href="/dashboard/jobs?status=active" className="group relative overflow-hidden rounded-xl border bg-white p-6 shadow-card transition-all duration-300 hover:shadow-card-hover" aria-label="View active jobs">
           <div className="absolute right-0 top-0 h-24 w-24 translate-x-6 -translate-y-6 rounded-full bg-emerald-500/[0.08] transition-transform group-hover:scale-125" />
           <div className="relative">
             <div className="flex items-center gap-3">
@@ -130,10 +130,10 @@ export default async function DashboardPage() {
             <p className="mt-3 text-3xl font-bold tabular-nums text-foreground">{activeJobs.length}</p>
             <p className="mt-1 text-xs text-muted-foreground">{totalJobs ?? 0} total all time</p>
           </div>
-        </div>
+        </Link>
 
         {/* At Risk Jobs */}
-        <div className="group relative overflow-hidden rounded-xl border bg-white p-6 shadow-card transition-all duration-300 hover:shadow-card-hover">
+        <Link href="/dashboard/jobs?filter=at_risk" className="group relative overflow-hidden rounded-xl border bg-white p-6 shadow-card transition-all duration-300 hover:shadow-card-hover" aria-label="View at risk jobs">
           <div className="absolute right-0 top-0 h-24 w-24 translate-x-6 -translate-y-6 rounded-full bg-amber-500/[0.08] transition-transform group-hover:scale-125" />
           <div className="relative">
             <div className="flex items-center gap-3">
@@ -149,10 +149,10 @@ export default async function DashboardPage() {
             </p>
             <p className="mt-1 text-xs text-muted-foreground">Jobs over budget or at risk</p>
           </div>
-        </div>
+        </Link>
 
         {/* Avg Margin */}
-        <div className="group relative overflow-hidden rounded-xl border bg-white p-6 shadow-card transition-all duration-300 hover:shadow-card-hover sm:col-span-2 lg:col-span-1">
+        <Link href="/dashboard/reports" className="group relative overflow-hidden rounded-xl border bg-white p-6 shadow-card transition-all duration-300 hover:shadow-card-hover sm:col-span-2 lg:col-span-1" aria-label="View reports">
           <div className="absolute right-0 top-0 h-24 w-24 translate-x-6 -translate-y-6 rounded-full bg-blue-500/[0.08] transition-transform group-hover:scale-125" />
           <div className="relative">
             <div className="flex items-center gap-3">
@@ -168,7 +168,7 @@ export default async function DashboardPage() {
             </p>
             <p className="mt-1 text-xs text-muted-foreground">Across {jobsWithContractValue.length} active job{jobsWithContractValue.length !== 1 ? "s" : ""}</p>
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* Job table or empty state */}
