@@ -185,7 +185,7 @@ export default function TeamClient() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Invite form — only for owners and PMs */}
       {(isOwner || currentUserRole === "pm") && (
         <Card>

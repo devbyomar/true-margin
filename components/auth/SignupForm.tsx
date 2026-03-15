@@ -154,9 +154,9 @@ export function SignupForm() {
   }
 
   return (
-    <Card className="border-0 shadow-lg lg:border lg:shadow-sm">
+    <Card className="border-0 shadow-2xl shadow-black/5 lg:border lg:shadow-lg animate-scale-in">
       <CardHeader className="space-y-1 pb-4">
-        <CardTitle className="text-2xl text-center">
+        <CardTitle className="text-2xl text-center font-bold">
           {isInviteFlow ? "Create your account" : "Get started free"}
         </CardTitle>
         <CardDescription className="text-center">

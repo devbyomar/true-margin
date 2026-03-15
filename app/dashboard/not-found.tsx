@@ -3,7 +3,7 @@ import Link from "next/link";
 export default function NotFound() {
   return (
     <div className="flex min-h-[400px] items-center justify-center">
-      <div className="text-center">
+      <div className="text-center animate-scale-in">
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-muted/50">
           <svg
             className="h-8 w-8 text-muted-foreground"

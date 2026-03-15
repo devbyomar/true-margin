@@ -53,6 +53,7 @@ const navItems = [
   { label: COPY.NAV_SETTINGS, href: "/dashboard/settings", Icon: SettingsIcon },
 ];
 
+/* ─── Desktop Sidebar ─── */
 export function Sidebar() {
   const pathname = usePathname();
 
@@ -129,5 +130,45 @@ export function Sidebar() {
         </div>
       </div>
     </aside>
+  );
+}
+
+/* ─── Mobile Bottom Navigation ─── */
+export function MobileBottomNav() {
+  const pathname = usePathname();
+
+  return (
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50 flex md:hidden items-stretch border-t bg-white/80 backdrop-blur-xl safe-area-pb"
+      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+      aria-label="Mobile navigation"
+    >
+      {navItems.map((item) => {
+        const isActive =
+          item.href === "/dashboard"
+            ? pathname === "/dashboard"
+            : pathname.startsWith(item.href);
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={cn(
+              "flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium transition-colors",
+              isActive
+                ? "text-emerald-600"
+                : "text-muted-foreground"
+            )}
+            aria-label={item.label}
+            aria-current={isActive ? "page" : undefined}
+          >
+            <item.Icon className={cn("h-5 w-5", isActive ? "text-emerald-600" : "text-muted-foreground/70")} />
+            <span>{item.label}</span>
+            {isActive && (
+              <div className="absolute top-0 h-0.5 w-8 rounded-full bg-emerald-500" />
+            )}
+          </Link>
+        );
+      })}
+    </nav>
   );
 }
