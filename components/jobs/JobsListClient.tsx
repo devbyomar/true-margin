@@ -163,18 +163,18 @@ export function JobsListClient({ jobs }: JobsListClientProps) {
                     )}
                   </div>
 
-                  <div className="flex items-center gap-6 text-sm">
+                  <div className="flex items-center gap-3 text-sm sm:gap-6">
                     <div className="text-right">
-                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">Contract</p>
-                      <p className="font-semibold tabular-nums text-foreground">{formatCAD(job.contract_value)}</p>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70 hidden sm:block">Contract</p>
+                      <p className="font-semibold tabular-nums text-foreground text-xs sm:text-sm">{formatCAD(job.contract_value)}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">Est. Margin</p>
-                      <p className="font-semibold tabular-nums text-foreground">{job.estimatedMarginPct.toFixed(1)}%</p>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70 hidden sm:block">Est.</p>
+                      <p className="font-semibold tabular-nums text-foreground text-xs sm:text-sm">{job.estimatedMarginPct.toFixed(1)}%</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">Actual</p>
-                      <p className={`font-bold tabular-nums ${job.actualMarginPct >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70 hidden sm:block">Actual</p>
+                      <p className={`font-bold tabular-nums text-xs sm:text-sm ${job.actualMarginPct >= 0 ? "text-emerald-600" : "text-red-600"}`}>
                         {job.actual_cost > 0 ? `${job.actualMarginPct.toFixed(1)}%` : "—"}
                       </p>
                     </div>
@@ -185,7 +185,7 @@ export function JobsListClient({ jobs }: JobsListClientProps) {
                       }`} />
                       <p className="text-xs font-medium text-muted-foreground">{MARGIN_STATUS_LABEL[job.marginStatus]}</p>
                     </div>
-                    <svg className="h-5 w-5 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-muted-foreground" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor" aria-hidden="true">
+                    <svg className="h-5 w-5 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-muted-foreground" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor" aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                     </svg>
                   </div>

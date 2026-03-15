@@ -109,9 +109,9 @@ export default function AuthLayout({
       </div>
 
       {/* Right panel — auth form */}
-      <div className="flex w-full flex-col items-center justify-center px-4 py-12 sm:px-8 lg:w-1/2">
+      <div className="flex w-full flex-col items-center justify-center px-4 py-8 sm:px-8 sm:py-12 lg:w-1/2">
         {/* Mobile-only branding */}
-        <div className="mb-8 text-center lg:hidden">
+        <div className="mb-6 text-center sm:mb-8 lg:hidden">
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-xl font-bold text-primary-foreground">
             T
           </div>

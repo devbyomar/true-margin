@@ -157,9 +157,9 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 animate-slide-up" style={{ animationDelay: "100ms" }}>
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-3 animate-slide-up sm:gap-4" style={{ animationDelay: "100ms" }}>
         {/* Active Jobs */}
-        <Link href="/dashboard/jobs?status=active" className="group relative overflow-hidden rounded-xl border bg-white p-6 shadow-card transition-all duration-300 hover:shadow-card-hover" aria-label="View active jobs">
+        <Link href="/dashboard/jobs?status=active" className="group relative overflow-hidden rounded-xl border bg-white p-4 shadow-card transition-all duration-300 hover:shadow-card-hover sm:p-6" aria-label="View active jobs">
           <div className="absolute right-0 top-0 h-24 w-24 translate-x-6 -translate-y-6 rounded-full bg-emerald-500/[0.08] transition-transform group-hover:scale-125" />
           <div className="relative">
             <div className="flex items-center gap-3">
@@ -170,13 +170,13 @@ export default async function DashboardPage() {
               </div>
               <p className="text-sm font-medium text-muted-foreground">Active Jobs</p>
             </div>
-            <p className="mt-3 text-3xl font-bold tabular-nums text-foreground">{activeJobs.length}</p>
+            <p className="mt-3 text-2xl font-bold tabular-nums text-foreground sm:text-3xl">{activeJobs.length}</p>
             <p className="mt-1 text-xs text-muted-foreground">{totalJobs ?? 0} total all time</p>
           </div>
         </Link>
 
         {/* At Risk Jobs */}
-        <Link href="/dashboard/jobs?filter=at_risk" className="group relative overflow-hidden rounded-xl border bg-white p-6 shadow-card transition-all duration-300 hover:shadow-card-hover" aria-label="View at risk jobs">
+        <Link href="/dashboard/jobs?filter=at_risk" className="group relative overflow-hidden rounded-xl border bg-white p-4 shadow-card transition-all duration-300 hover:shadow-card-hover sm:p-6" aria-label="View at risk jobs">
           <div className="absolute right-0 top-0 h-24 w-24 translate-x-6 -translate-y-6 rounded-full bg-amber-500/[0.08] transition-transform group-hover:scale-125" />
           <div className="relative">
             <div className="flex items-center gap-3">
@@ -187,7 +187,7 @@ export default async function DashboardPage() {
               </div>
               <p className="text-sm font-medium text-muted-foreground">At Risk</p>
             </div>
-            <p className={`mt-3 text-3xl font-bold tabular-nums ${atRiskCount > 0 ? "text-red-600" : "text-foreground"}`}>
+            <p className={`mt-3 text-2xl font-bold tabular-nums sm:text-3xl ${atRiskCount > 0 ? "text-red-600" : "text-foreground"}`}>
               {atRiskCount}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">Jobs over budget or at risk</p>
@@ -195,7 +195,7 @@ export default async function DashboardPage() {
         </Link>
 
         {/* Avg Margin */}
-        <Link href="/dashboard/reports" className="group relative overflow-hidden rounded-xl border bg-white p-6 shadow-card transition-all duration-300 hover:shadow-card-hover sm:col-span-2 lg:col-span-1" aria-label="View reports">
+        <Link href="/dashboard/reports" className="group relative overflow-hidden rounded-xl border bg-white p-4 shadow-card transition-all duration-300 hover:shadow-card-hover col-span-2 lg:col-span-1 sm:p-6" aria-label="View reports">
           <div className="absolute right-0 top-0 h-24 w-24 translate-x-6 -translate-y-6 rounded-full bg-blue-500/[0.08] transition-transform group-hover:scale-125" />
           <div className="relative">
             <div className="flex items-center gap-3">
@@ -206,7 +206,7 @@ export default async function DashboardPage() {
               </div>
               <p className="text-sm font-medium text-muted-foreground">Avg. Margin</p>
             </div>
-            <p className="mt-3 text-3xl font-bold tabular-nums text-foreground">
+            <p className="mt-3 text-2xl font-bold tabular-nums text-foreground sm:text-3xl">
               {avgMargin !== null ? `${avgMargin.toFixed(1)}%` : "—"}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -240,7 +240,7 @@ export default async function DashboardPage() {
             </div>
             <p className="text-[11px] font-semibold uppercase tracking-wider text-red-600/80">{COPY.WORST_JOB_TITLE}</p>
             <p className="mt-1 text-lg font-bold text-foreground group-hover:text-red-700 transition-colors">{worstJob.job.name}</p>
-            <div className="mt-2 flex items-center gap-4 text-sm">
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
               <span className="text-muted-foreground">
                 Margin: <span className="font-bold text-red-600 tabular-nums">{worstJob.margin.actualMarginPct.toFixed(1)}%</span>
               </span>
@@ -248,7 +248,7 @@ export default async function DashboardPage() {
                 {COPY.VARIANCE}: <span className={`font-semibold tabular-nums ${worstJob.margin.varianceDollar >= 0 ? "text-emerald-600" : "text-red-600"}`}>{worstJob.margin.varianceDollar >= 0 ? "+" : ""}{formatCAD(worstJob.margin.varianceDollar)}</span>
               </span>
               {worstJob.job.customer_name && (
-                <span className="text-muted-foreground">{worstJob.job.customer_name}</span>
+                <span className="text-muted-foreground hidden sm:inline">{worstJob.job.customer_name}</span>
               )}
             </div>
           </div>

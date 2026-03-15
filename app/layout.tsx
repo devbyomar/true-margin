@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { cn } from "@/lib/utils";
@@ -9,6 +9,14 @@ const geistSans = localFont({
   weight: "100 900",
 });
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+};
+
 export const metadata: Metadata = {
   title: "TrueMargin — Know your margin before the job ends",
   description:
@@ -16,6 +24,11 @@ export const metadata: Metadata = {
   icons: {
     icon: "/favicon.svg",
     apple: "/favicon.svg",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "TrueMargin",
   },
 };
 
