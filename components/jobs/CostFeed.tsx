@@ -62,6 +62,7 @@ interface CostEntryRow {
   amount: number;
   source: string;
   receipt_url: string | null;
+  validation_status: string;
   users: { full_name: string | null } | null;
 }
 
@@ -124,12 +125,56 @@ export function CostFeed({ jobId, entries }: CostFeedProps) {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Validation state
+  const [validatingIds, setValidatingIds] = useState<Set<string>>(new Set());
+
+  const pendingCount = entries.filter(
+    (e) => e.validation_status === "pending"
+  ).length;
+
   const resetForm = useCallback(() => {
     setCategory("materials");
     setDescription("");
     setAmount("");
     setError(null);
   }, []);
+
+  async function handleValidation(
+    entryIds: string[],
+    action: "validate" | "reject"
+  ) {
+    setValidatingIds((prev) => {
+      const next = new Set(prev);
+      entryIds.forEach((id) => next.add(id));
+      return next;
+    });
+
+    try {
+      const res = await fetch("/api/cost-entries/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entry_ids: entryIds, action }),
+      });
+      if (res.ok) {
+        router.refresh();
+      }
+    } finally {
+      setValidatingIds((prev) => {
+        const next = new Set(prev);
+        entryIds.forEach((id) => next.delete(id));
+        return next;
+      });
+    }
+  }
+
+  async function handleApproveAll() {
+    const pendingIds = entries
+      .filter((e) => e.validation_status === "pending")
+      .map((e) => e.id);
+    if (pendingIds.length > 0) {
+      await handleValidation(pendingIds, "validate");
+    }
+  }
 
   async function handleDelete() {
     if (!deleteTarget) return;
@@ -198,28 +243,48 @@ export function CostFeed({ jobId, entries }: CostFeedProps) {
           <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-muted px-1.5 text-[11px] font-bold tabular-nums text-muted-foreground">
             {entries.length}
           </span>
-        </div>
-        <Button
-          size="sm"
-          variant={showForm ? "outline" : "default"}
-          className={showForm ? "" : "shadow-sm shadow-emerald-500/20"}
-          onClick={() => {
-            setShowForm(!showForm);
-            if (!showForm) resetForm();
-          }}
-          aria-label={showForm ? COPY.CANCEL : COPY.ADD_COST_ENTRY}
-        >
-          {showForm ? (
-            COPY.CANCEL
-          ) : (
-            <>
-              <svg className="mr-1.5 h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
-              {COPY.ADD_COST_ENTRY}
-            </>
+          {pendingCount > 0 && (
+            <span className="flex h-5 items-center gap-1 rounded-full bg-amber-50 px-2 text-[11px] font-bold tabular-nums text-amber-600 ring-1 ring-inset ring-amber-500/20">
+              {pendingCount} {COPY.VALIDATION_PENDING_COUNT}
+            </span>
           )}
-        </Button>
+        </div>
+        <div className="flex items-center gap-2">
+          {pendingCount > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleApproveAll}
+              className="text-xs gap-1"
+            >
+              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+              </svg>
+              {COPY.VALIDATION_APPROVE_ALL}
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant={showForm ? "outline" : "default"}
+            className={showForm ? "" : "shadow-sm shadow-emerald-500/20"}
+            onClick={() => {
+              setShowForm(!showForm);
+              if (!showForm) resetForm();
+            }}
+            aria-label={showForm ? COPY.CANCEL : COPY.ADD_COST_ENTRY}
+          >
+            {showForm ? (
+              COPY.CANCEL
+            ) : (
+              <>
+                <svg className="mr-1.5 h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                {COPY.ADD_COST_ENTRY}
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Inline add form */}
@@ -326,13 +391,23 @@ export function CostFeed({ jobId, entries }: CostFeedProps) {
 
                 {/* Details */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-sm font-medium text-foreground truncate">
                       {entry.description ?? entry.category}
                     </p>
                     <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold ${sourceBadge.className}`}>
                       {sourceBadge.label}
                     </span>
+                    {entry.validation_status === "pending" && (
+                      <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold bg-amber-50 text-amber-600 ring-1 ring-inset ring-amber-500/20">
+                        {COPY.VALIDATION_PENDING}
+                      </span>
+                    )}
+                    {entry.validation_status === "rejected" && (
+                      <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold bg-red-50 text-red-600 ring-1 ring-inset ring-red-500/20">
+                        {COPY.VALIDATION_REJECTED}
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {entry.users?.full_name ?? "Unknown"} · {formatDate(entry.created_at)} {formatTime(entry.created_at)}
@@ -340,9 +415,37 @@ export function CostFeed({ jobId, entries }: CostFeedProps) {
                 </div>
 
                 {/* Amount */}
-                <p className="shrink-0 text-sm font-bold tabular-nums text-foreground">
+                <p className={`shrink-0 text-sm font-bold tabular-nums ${entry.validation_status === "rejected" ? "text-muted-foreground line-through" : "text-foreground"}`}>
                   {formatCAD(entry.amount)}
                 </p>
+
+                {/* Validation buttons for pending entries */}
+                {entry.validation_status === "pending" && (
+                  <div className="flex shrink-0 gap-1">
+                    <button
+                      onClick={() => handleValidation([entry.id], "validate")}
+                      disabled={validatingIds.has(entry.id)}
+                      className="rounded-md p-1.5 text-emerald-600/60 transition-colors hover:bg-emerald-50 hover:text-emerald-600 disabled:opacity-50"
+                      aria-label={`Approve: ${entry.description ?? entry.category}`}
+                      title={COPY.VALIDATION_APPROVE}
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => handleValidation([entry.id], "reject")}
+                      disabled={validatingIds.has(entry.id)}
+                      className="rounded-md p-1.5 text-red-400/60 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                      aria-label={`Reject: ${entry.description ?? entry.category}`}
+                      title={COPY.VALIDATION_REJECT}
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
 
                 {/* Delete button */}
                 <button

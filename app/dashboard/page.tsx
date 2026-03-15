@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { calculateMargin } from "@/lib/margin-calculator";
 import { COPY } from "@/lib/copy";
+import { BenchmarkCard } from "@/components/dashboard/BenchmarkCard";
 import type { Job, MarginStatus } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -255,7 +256,9 @@ export default async function DashboardPage() {
       )}
 
       {/* Job table or empty state */}
-      <div className="animate-slide-up" style={{ animationDelay: "200ms" }}>
+      <div className="grid gap-6 lg:grid-cols-3 animate-slide-up" style={{ animationDelay: "200ms" }}>
+        {/* Jobs table — takes 2/3 width on desktop */}
+        <div className="lg:col-span-2">
         {activeJobs.length === 0 ? (
           <div className="relative overflow-hidden rounded-xl border border-dashed border-emerald-200 bg-gradient-to-br from-emerald-50/50 to-teal-50/30 p-8 text-center md:p-12">
             <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-emerald-100/50" />
@@ -386,6 +389,12 @@ export default async function DashboardPage() {
             </div>
           </div>
         )}
+        </div>
+
+        {/* Sidebar — Benchmarking */}
+        <div className="lg:col-span-1">
+          <BenchmarkCard />
+        </div>
       </div>
     </div>
   );

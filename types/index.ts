@@ -22,8 +22,11 @@ export type CostCategory =
   | "equipment"
   | "other";
 export type CostSource = "manual" | "sms" | "import";
+export type CostValidationStatus = "pending" | "validated" | "rejected";
 export type ChangeOrderStatus = "pending" | "approved" | "rejected";
 export type MarginStatus = "on_track" | "at_risk" | "over_budget";
+export type DocumentScanStatus = "processing" | "completed" | "failed";
+export type TimeEntrySource = "manual" | "sms";
 
 export type Province =
   | "AB"
@@ -93,6 +96,7 @@ export interface Job {
   actual_cost: number;
   notes: string | null;
   closed_at: string | null;
+  customer_portal_token: string | null;
 }
 
 // ---- Cost Entry ----
@@ -109,6 +113,7 @@ export interface CostEntry {
   amount: number;
   receipt_url: string | null;
   sms_raw: string | null;
+  validation_status: CostValidationStatus;
 }
 
 // ---- Change Order ----
@@ -211,4 +216,87 @@ export interface ApiErrorResponse {
 
 export interface ApiSuccessResponse<T> {
   data: T;
+}
+
+// ---- Document Scan (OCR) ----
+
+export interface DocumentScanLineItem {
+  category: CostCategory;
+  description: string;
+  amount: number;
+  confidence: "high" | "low";
+}
+
+export interface DocumentScan {
+  id: string;
+  created_at: string;
+  company_id: string;
+  job_id: string;
+  uploaded_by: string | null;
+  file_url: string;
+  file_name: string | null;
+  status: DocumentScanStatus;
+  raw_ocr_text: string | null;
+  extracted_line_items: DocumentScanLineItem[];
+  error_message: string | null;
+  processed_at: string | null;
+}
+
+// ---- Time Entry (Crew Time Tracking) ----
+
+export interface TimeEntry {
+  id: string;
+  created_at: string;
+  job_id: string;
+  company_id: string;
+  user_id: string;
+  started_at: string;
+  stopped_at: string | null;
+  hours: number | null;
+  labour_rate: number | null;
+  amount: number | null;
+  cost_entry_id: string | null;
+  source: TimeEntrySource;
+  notes: string | null;
+}
+
+// ---- Benchmark Data ----
+
+export interface BenchmarkData {
+  id: string;
+  updated_at: string;
+  job_type: string;
+  province: string | null;
+  sample_size: number;
+  avg_margin_pct: number;
+  p25_margin_pct: number;
+  median_margin_pct: number;
+  p75_margin_pct: number;
+  avg_contract_value: number;
+}
+
+// ---- SMS Time Tracking Commands ----
+
+export interface ParsedTimeCommand {
+  command: "start" | "stop";
+  jobCode: string | null;
+  notes: string | null;
+}
+
+// ---- Customer Portal ----
+
+export interface PortalJobView {
+  name: string;
+  customer_name: string | null;
+  status: JobStatus;
+  contract_value: number;
+  actual_cost: number;
+  change_orders: Array<{
+    number: number | null;
+    title: string;
+    amount: number;
+    status: ChangeOrderStatus;
+    signed_at: string | null;
+  }>;
+  progress_pct: number;
 }
