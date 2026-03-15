@@ -13,6 +13,10 @@ export const metadata: Metadata = {
   title: "TrueMargin — Know your margin before the job ends",
   description:
     "Real-time job costing and margin tracking for Canadian trade contractors. HVAC, plumbing, electrical, roofing.",
+  icons: {
+    icon: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({
