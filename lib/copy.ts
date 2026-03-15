@@ -202,7 +202,73 @@ export const COPY = {
   SMS_PARSE_ERROR:
     "Couldn't read that. Try: 'JOB-4821 materials 340 copper pipe'. Reply HELP for examples.",
   SMS_HELP:
-    "TrueMargin SMS commands:\n• materials 340 copper pipe\n• labour 4hrs\n• sub 850 electrical rough in\n• equip 200 rental\n• JOB-XXXX materials 340 pipe\n\nInclude a job code if you have multiple active jobs.",
+    "TrueMargin SMS commands:\n• materials 340 copper pipe\n• labour 4hrs\n• sub 850 electrical rough in\n• equip 200 rental\n• JOB-XXXX materials 340 pipe\n• start (clock in)\n• stop (clock out)\n\nInclude a job code if you have multiple active jobs.",
+
+  // OCR / Invoice Scanning
+  OCR_TITLE: "Scan Invoice",
+  OCR_SUBTITLE: "Upload a receipt or supplier invoice to auto-extract line items.",
+  OCR_UPLOAD: "Upload Invoice",
+  OCR_UPLOADING: "Uploading…",
+  OCR_PROCESSING: "Processing invoice…",
+  OCR_COMPLETED: "Line items extracted",
+  OCR_FAILED: "Could not read this document. Try a clearer photo.",
+  OCR_DRAG_DROP: "Drag & drop an invoice, or click to browse",
+  OCR_SUPPORTED: "Supports JPG, PNG, PDF (max 10MB)",
+  OCR_REVIEW_ITEMS: "Review Extracted Items",
+  OCR_CONFIRM_ALL: "Add All to Job",
+  OCR_CONFIRM_SELECTED: "Add Selected",
+  OCR_LOW_CONFIDENCE: "Low confidence — please verify",
+  OCR_NO_ITEMS: "No line items could be extracted from this document.",
+
+  // Cost Validation
+  VALIDATION_PENDING: "Pending Review",
+  VALIDATION_VALIDATED: "Validated",
+  VALIDATION_REJECTED: "Rejected",
+  VALIDATION_APPROVE: "Approve",
+  VALIDATION_REJECT: "Reject",
+  VALIDATION_APPROVE_ALL: "Approve All Pending",
+  VALIDATION_PENDING_COUNT: "pending review",
+  VALIDATION_SUMMARY: "Cost Validation",
+
+  // Time Tracking
+  TIME_TRACKING_TITLE: "Time Tracking",
+  TIME_CLOCK_IN: "Clock In",
+  TIME_CLOCK_OUT: "Clock Out",
+  TIME_ACTIVE: "Active Timer",
+  TIME_NO_ACTIVE: "No active timer",
+  TIME_HISTORY: "Time Log",
+  TIME_HOURS: "hours",
+  TIME_STARTED: "Started",
+  TIME_STOPPED: "Stopped",
+  TIME_DURATION: "Duration",
+  TIME_SMS_CLOCKED_IN: "✓ Clocked in on ${jobCode} at ${time}. Text 'stop' when done.",
+  TIME_SMS_CLOCKED_OUT: "✓ Clocked out on ${jobCode}. ${hours}h logged = $${amount}. Job margin: ${margin}% (${status})",
+  TIME_SMS_ALREADY_CLOCKED_IN: "You're already clocked in on ${jobCode}. Text 'stop' to clock out first.",
+  TIME_SMS_NOT_CLOCKED_IN: "You're not clocked in. Text 'start' to begin tracking time.",
+
+  // Benchmarking
+  BENCHMARK_TITLE: "Industry Comparison",
+  BENCHMARK_SUBTITLE: "See how your margins compare to similar jobs.",
+  BENCHMARK_YOUR_MARGIN: "Your Avg. Margin",
+  BENCHMARK_INDUSTRY_AVG: "Industry Avg.",
+  BENCHMARK_PERCENTILE: "Percentile",
+  BENCHMARK_SAMPLE_SIZE: "Based on",
+  BENCHMARK_JOBS: "jobs",
+  BENCHMARK_NO_DATA: "Not enough data for benchmarks yet.",
+  BENCHMARK_ABOVE_AVG: "Above average",
+  BENCHMARK_BELOW_AVG: "Below average",
+
+  // Customer Portal
+  PORTAL_TITLE: "Job Progress",
+  PORTAL_SUBTITLE: "Real-time updates on your project.",
+  PORTAL_SHARE_LINK: "Share Customer Portal",
+  PORTAL_COPY_LINK: "Copy Link",
+  PORTAL_LINK_COPIED: "Link copied!",
+  PORTAL_PROGRESS: "Progress",
+  PORTAL_BALANCE: "Balance Remaining",
+  PORTAL_CHANGE_ORDERS: "Change Orders",
+  PORTAL_POWERED_BY: "Powered by TrueMargin",
+  PORTAL_STATUS_LABEL: "Project Status",
 
   // Misc
   LOADING: "Loading...",

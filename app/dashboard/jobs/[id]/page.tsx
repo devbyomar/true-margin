@@ -7,6 +7,9 @@ import { MarginGauge } from "@/components/jobs/MarginGauge";
 import { CostFeed } from "@/components/jobs/CostFeed";
 import { JobDetailActions } from "@/components/jobs/JobDetailActions";
 import { ChangeOrderList } from "@/components/jobs/ChangeOrderList";
+import { InvoiceScanner } from "@/components/jobs/InvoiceScanner";
+import { TimeTracker } from "@/components/jobs/TimeTracker";
+import { PortalShareButton } from "@/components/jobs/PortalShareButton";
 import type { Job, CostCategory, ChangeOrderStatus } from "@/types";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -105,6 +108,7 @@ export default async function JobDetailPage({ params }: RouteParams) {
     amount: number;
     source: string;
     receipt_url: string | null;
+    validation_status: string;
     users: { full_name: string | null } | null;
   }>;
 
@@ -129,6 +133,24 @@ export default async function JobDetailPage({ params }: RouteParams) {
   }>;
 
   const changeOrderCount = changeOrders.length;
+
+  // Fetch time entries
+  const { data: timeEntriesData } = await supabase
+    .from("time_entries")
+    .select("*, users:user_id(full_name)")
+    .eq("job_id", id)
+    .order("created_at", { ascending: false });
+
+  const timeEntries = (timeEntriesData ?? []) as Array<{
+    id: string;
+    started_at: string;
+    stopped_at: string | null;
+    hours: number | null;
+    amount: number | null;
+    notes: string | null;
+    source: string;
+    users: { full_name: string | null } | null;
+  }>;
 
   const statusLabel = STATUS_LABELS[typedJob.status] ?? typedJob.status;
   const statusBadge = STATUS_BADGE[typedJob.status] ?? STATUS_BADGE.estimating;
@@ -179,7 +201,8 @@ export default async function JobDetailPage({ params }: RouteParams) {
           )}
         </div>
 
-        <div className="flex shrink-0 gap-2">
+        <div className="flex shrink-0 gap-2 flex-wrap">
+          <PortalShareButton portalToken={typedJob.customer_portal_token} />
           <Link
             href={`/dashboard/jobs/${id}/edit`}
             className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border bg-white px-3 text-sm font-semibold text-foreground shadow-sm transition-all hover:bg-muted/50 active:scale-[0.98]"
@@ -373,9 +396,11 @@ export default async function JobDetailPage({ params }: RouteParams) {
           )}
         </div>
 
-        {/* Right column — cost feed */}
-        <div className="lg:col-span-2">
+        {/* Right column — cost feed + invoice scanner + time tracker */}
+        <div className="lg:col-span-2 space-y-6">
+          <InvoiceScanner jobId={id} />
           <CostFeed jobId={id} entries={entries} />
+          <TimeTracker jobId={id} timeEntries={timeEntries} />
         </div>
       </div>
     </div>

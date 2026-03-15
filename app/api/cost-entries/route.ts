@@ -2,6 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
 
+export const dynamic = "force-dynamic";
+
 const createCostEntrySchema = z.object({
   job_id: z.string().uuid("Invalid job ID"),
   category: z.enum(["labour", "materials", "subcontractor", "equipment", "other"]),
@@ -10,6 +12,7 @@ const createCostEntrySchema = z.object({
   source: z.enum(["manual", "sms", "import"]).optional().default("manual"),
   receipt_url: z.string().url().nullable().optional(),
   sms_raw: z.string().nullable().optional(),
+  validation_status: z.enum(["pending", "validated", "rejected"]).optional(),
 });
 
 export async function GET(request: NextRequest) {

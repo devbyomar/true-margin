@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseSmsEntry, extractJobCode, isHelpCommand } from "@/lib/sms-parser";
+import { parseSmsEntry, extractJobCode, isHelpCommand, parseTimeCommand } from "@/lib/sms-parser";
 
 // ============================================================
 // SMS Parser — Unit Tests
@@ -221,5 +221,168 @@ describe("isHelpCommand", () => {
 
   it("rejects partial help in longer string", () => {
     expect(isHelpCommand("need help with this")).toBe(false);
+  });
+});
+
+// ============================================================
+// Time Tracking Commands
+// ============================================================
+
+describe("parseTimeCommand", () => {
+  // ---- Start commands ----
+  describe("start / clock-in commands", () => {
+    it('parses "start"', () => {
+      const result = parseTimeCommand("start");
+      expect(result).not.toBeNull();
+      expect(result!.command).toBe("start");
+      expect(result!.jobCode).toBeNull();
+      expect(result!.notes).toBeNull();
+    });
+
+    it('parses "clock in"', () => {
+      const result = parseTimeCommand("clock in");
+      expect(result).not.toBeNull();
+      expect(result!.command).toBe("start");
+    });
+
+    it('parses "clockin" (no space)', () => {
+      const result = parseTimeCommand("clockin");
+      expect(result).not.toBeNull();
+      expect(result!.command).toBe("start");
+    });
+
+    it('parses "begin"', () => {
+      const result = parseTimeCommand("begin");
+      expect(result).not.toBeNull();
+      expect(result!.command).toBe("start");
+    });
+
+    it('parses "punch in"', () => {
+      const result = parseTimeCommand("punch in");
+      expect(result).not.toBeNull();
+      expect(result!.command).toBe("start");
+    });
+
+    it('parses "START" (case insensitive)', () => {
+      const result = parseTimeCommand("START");
+      expect(result).not.toBeNull();
+      expect(result!.command).toBe("start");
+    });
+
+    it('parses "JOB-A1B2 start" (with job code)', () => {
+      const result = parseTimeCommand("JOB-A1B2 start");
+      expect(result).not.toBeNull();
+      expect(result!.command).toBe("start");
+      expect(result!.jobCode).toBe("JOB-A1B2");
+    });
+
+    it('parses "start installing ductwork" (with notes)', () => {
+      const result = parseTimeCommand("start installing ductwork");
+      expect(result).not.toBeNull();
+      expect(result!.command).toBe("start");
+      expect(result!.notes).toBe("installing ductwork");
+    });
+
+    it('parses "JOB-X4Y9 start framing upstairs" (job code + notes)', () => {
+      const result = parseTimeCommand("JOB-X4Y9 start framing upstairs");
+      expect(result).not.toBeNull();
+      expect(result!.command).toBe("start");
+      expect(result!.jobCode).toBe("JOB-X4Y9");
+      expect(result!.notes).toBe("framing upstairs");
+    });
+  });
+
+  // ---- Stop commands ----
+  describe("stop / clock-out commands", () => {
+    it('parses "stop"', () => {
+      const result = parseTimeCommand("stop");
+      expect(result).not.toBeNull();
+      expect(result!.command).toBe("stop");
+    });
+
+    it('parses "clock out"', () => {
+      const result = parseTimeCommand("clock out");
+      expect(result).not.toBeNull();
+      expect(result!.command).toBe("stop");
+    });
+
+    it('parses "end"', () => {
+      const result = parseTimeCommand("end");
+      expect(result).not.toBeNull();
+      expect(result!.command).toBe("stop");
+    });
+
+    it('parses "done"', () => {
+      const result = parseTimeCommand("done");
+      expect(result).not.toBeNull();
+      expect(result!.command).toBe("stop");
+    });
+
+    it('parses "punch out"', () => {
+      const result = parseTimeCommand("punch out");
+      expect(result).not.toBeNull();
+      expect(result!.command).toBe("stop");
+    });
+
+    it('parses "JOB-A1B2 stop" (with job code)', () => {
+      const result = parseTimeCommand("JOB-A1B2 stop");
+      expect(result).not.toBeNull();
+      expect(result!.command).toBe("stop");
+      expect(result!.jobCode).toBe("JOB-A1B2");
+    });
+
+    it('parses "stop finished rough-in" (with notes)', () => {
+      const result = parseTimeCommand("stop finished rough-in");
+      expect(result).not.toBeNull();
+      expect(result!.command).toBe("stop");
+      expect(result!.notes).toBe("finished rough-in");
+    });
+  });
+
+  // ---- Non-time-commands ----
+  describe("non-time-tracking messages", () => {
+    it("returns null for cost entries", () => {
+      expect(parseTimeCommand("materials 340 copper pipe")).toBeNull();
+    });
+
+    it("returns null for help", () => {
+      expect(parseTimeCommand("help")).toBeNull();
+    });
+
+    it("returns null for random text", () => {
+      expect(parseTimeCommand("hey what's up")).toBeNull();
+    });
+
+    it("returns null for amounts", () => {
+      expect(parseTimeCommand("$340")).toBeNull();
+    });
+  });
+});
+
+// ============================================================
+// parseSmsEntry does NOT match time tracking commands
+// ============================================================
+
+describe("parseSmsEntry vs time commands", () => {
+  const DEFAULT_RATE = 85;
+
+  it('does not parse "start" as a cost entry', () => {
+    expect(parseSmsEntry("start", DEFAULT_RATE)).toBeNull();
+  });
+
+  it('does not parse "stop" as a cost entry', () => {
+    expect(parseSmsEntry("stop", DEFAULT_RATE)).toBeNull();
+  });
+
+  it('does not parse "clock in" as a cost entry', () => {
+    expect(parseSmsEntry("clock in", DEFAULT_RATE)).toBeNull();
+  });
+
+  it('does not parse "JOB-A1B2 start" as a cost entry', () => {
+    expect(parseSmsEntry("JOB-A1B2 start", DEFAULT_RATE)).toBeNull();
+  });
+
+  it('does not parse "done" as a cost entry', () => {
+    expect(parseSmsEntry("done", DEFAULT_RATE)).toBeNull();
   });
 });

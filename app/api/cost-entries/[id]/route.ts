@@ -6,6 +6,7 @@ const updateCostEntrySchema = z.object({
   category: z.enum(["labour", "materials", "subcontractor", "equipment", "other"]).optional(),
   description: z.string().nullable().optional(),
   amount: z.number().min(0.01, "Amount must be greater than 0").optional(),
+  validation_status: z.enum(["pending", "validated", "rejected"]).optional(),
 });
 
 interface RouteParams {
