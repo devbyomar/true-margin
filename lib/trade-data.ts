@@ -4,7 +4,7 @@
 // presets, and units. Used for smart combobox dropdowns.
 // ============================================================
 
-import type { CostCategory, JobType, UnitType } from "@/types";
+import type { CostCategory, UnitType } from "@/types";
 
 // ---- Common material/description suggestions per trade ----
 
@@ -693,7 +693,7 @@ export function getSuggestionsForTrade(
   category?: CostCategory
 ): TradeSuggestion[] {
   const key = tradeType ?? "other";
-  const suggestions = TRADE_SUGGESTIONS[key] ?? TRADE_SUGGESTIONS.other;
+  const suggestions: TradeSuggestion[] = TRADE_SUGGESTIONS[key] ?? TRADE_SUGGESTIONS.other ?? [];
   if (category) {
     return suggestions.filter((s) => s.category === category);
   }
