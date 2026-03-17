@@ -14,6 +14,28 @@ export type JobType =
   | "plumbing"
   | "electrical"
   | "roofing"
+  | "flooring"
+  | "painting"
+  | "landscaping"
+  | "concrete"
+  | "framing"
+  | "drywall"
+  | "insulation"
+  | "siding"
+  | "windows_doors"
+  | "demolition"
+  | "bathroom_reno"
+  | "kitchen_reno"
+  | "basement_finishing"
+  | "deck_fence"
+  | "general_renovation"
+  | "fire_restoration"
+  | "waterproofing"
+  | "excavation"
+  | "tile_masonry"
+  | "carpentry"
+  | "garage_door"
+  | "solar"
   | "other";
 export type CostCategory =
   | "labour"
@@ -27,6 +49,27 @@ export type ChangeOrderStatus = "pending" | "approved" | "rejected";
 export type MarginStatus = "on_track" | "at_risk" | "over_budget";
 export type DocumentScanStatus = "processing" | "completed" | "failed";
 export type TimeEntrySource = "manual" | "sms";
+export type PhaseStatus = "pending" | "in_progress" | "completed";
+export type VendorCategory = "supplier" | "subcontractor" | "equipment_rental" | "other";
+export type UnitType =
+  | "each"
+  | "hours"
+  | "sqft"
+  | "lnft"
+  | "m2"
+  | "m"
+  | "sheets"
+  | "rolls"
+  | "bags"
+  | "boxes"
+  | "tonnes"
+  | "loads"
+  | "days"
+  | "gallons"
+  | "litres"
+  | "pieces"
+  | "bundles"
+  | "pallets";
 
 export type Province =
   | "AB"
@@ -114,6 +157,12 @@ export interface CostEntry {
   receipt_url: string | null;
   sms_raw: string | null;
   validation_status: CostValidationStatus;
+  vendor_id: string | null;
+  vendor_name: string | null;
+  quantity: number | null;
+  unit: UnitType | null;
+  unit_price: number | null;
+  phase_id: string | null;
 }
 
 // ---- Change Order ----
@@ -281,6 +330,71 @@ export interface ParsedTimeCommand {
   command: "start" | "stop";
   jobCode: string | null;
   notes: string | null;
+}
+
+// ---- Vendor ----
+
+export interface Vendor {
+  id: string;
+  created_at: string;
+  company_id: string;
+  name: string;
+  contact_name: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  category: VendorCategory;
+  notes: string | null;
+  is_active: boolean;
+}
+
+// ---- Job Phase ----
+
+export interface JobPhase {
+  id: string;
+  created_at: string;
+  job_id: string;
+  company_id: string;
+  name: string;
+  sort_order: number;
+  status: PhaseStatus;
+  estimated_cost: number;
+  actual_cost: number;
+  notes: string | null;
+}
+
+// ---- Estimate Line Item ----
+
+export interface EstimateLineItem {
+  id: string;
+  created_at: string;
+  job_id: string;
+  company_id: string;
+  phase_id: string | null;
+  category: CostCategory;
+  description: string;
+  quantity: number;
+  unit: UnitType;
+  unit_price: number;
+  total: number;
+  vendor_id: string | null;
+  sort_order: number;
+  notes: string | null;
+}
+
+// ---- Materials Catalog Item ----
+
+export interface MaterialsCatalogItem {
+  id: string;
+  created_at: string;
+  company_id: string;
+  name: string;
+  category: CostCategory;
+  default_unit: UnitType;
+  default_unit_price: number | null;
+  vendor_id: string | null;
+  trade_type: JobType | null;
+  is_active: boolean;
 }
 
 // ---- Customer Portal ----
