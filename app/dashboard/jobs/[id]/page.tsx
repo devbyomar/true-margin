@@ -112,6 +112,39 @@ export default async function JobDetailPage({ params }: RouteParams) {
     users: { full_name: string | null } | null;
   }>;
 
+  // Fetch estimate line items
+  const { data: lineItemsData } = await supabase
+    .from("estimate_line_items")
+    .select("*")
+    .eq("job_id", id)
+    .order("sort_order", { ascending: true });
+
+  const lineItems = (lineItemsData ?? []) as Array<{
+    id: string;
+    category: string;
+    description: string;
+    quantity: number;
+    unit: string;
+    unit_price: number;
+    sort_order: number;
+  }>;
+
+  // Fetch job phases
+  const { data: phasesData } = await supabase
+    .from("job_phases")
+    .select("*")
+    .eq("job_id", id)
+    .order("sort_order", { ascending: true });
+
+  const phases = (phasesData ?? []) as Array<{
+    id: string;
+    name: string;
+    status: string;
+    estimated_cost: number;
+    actual_cost: number;
+    sort_order: number;
+  }>;
+
   // Fetch change orders
   const { data: changeOrdersData } = await supabase
     .from("change_orders")
@@ -260,32 +293,106 @@ export default async function JobDetailPage({ params }: RouteParams) {
             <div className="border-b px-5 py-3">
               <h3 className="text-sm font-semibold text-foreground">Estimate Breakdown</h3>
             </div>
-            <dl className="divide-y text-sm">
-              <InfoRow
-                label="Labour"
-                value={`${typedJob.estimated_labour_hours}h × ${formatCAD(labourRate)}/hr`}
-              />
-              <InfoRow label="Materials" value={formatCAD(typedJob.estimated_materials)} />
-              <InfoRow label="Subcontractor" value={formatCAD(typedJob.estimated_subcontractor)} />
-              <InfoRow label="Overhead" value={`${overheadRate}%`} />
-              <InfoRow
-                label={COPY.ESTIMATED_COST}
-                value={formatCAD(margin.estimatedCost)}
-                bold
-              />
-              <InfoRow
-                label="Contract"
-                value={formatCAD(typedJob.contract_value)}
-                bold
-              />
-              <InfoRow
-                label={COPY.ESTIMATED_PROFIT}
-                value={formatCAD(margin.estimatedGrossProfit)}
-                bold
-                highlight={margin.estimatedGrossProfit >= 0 ? "green" : "red"}
-              />
-            </dl>
+            {lineItems.length > 0 ? (
+              <div className="divide-y text-sm">
+                {lineItems.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between px-5 py-2.5">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-foreground truncate">{item.description}</p>
+                      <p className="text-xs text-muted-foreground capitalize">
+                        {item.category} · {item.quantity} {item.unit} × {formatCAD(item.unit_price)}
+                      </p>
+                    </div>
+                    <span className="shrink-0 ml-3 font-medium tabular-nums text-foreground">
+                      {formatCAD(item.quantity * item.unit_price)}
+                    </span>
+                  </div>
+                ))}
+                <InfoRow
+                  label={COPY.ESTIMATED_COST}
+                  value={formatCAD(margin.estimatedCost)}
+                  bold
+                />
+                <InfoRow label="Overhead" value={`${overheadRate}%`} />
+                <InfoRow
+                  label="Contract"
+                  value={formatCAD(typedJob.contract_value)}
+                  bold
+                />
+                <InfoRow
+                  label={COPY.ESTIMATED_PROFIT}
+                  value={formatCAD(margin.estimatedGrossProfit)}
+                  bold
+                  highlight={margin.estimatedGrossProfit >= 0 ? "green" : "red"}
+                />
+              </div>
+            ) : (
+              <dl className="divide-y text-sm">
+                <InfoRow
+                  label="Labour"
+                  value={`${typedJob.estimated_labour_hours}h × ${formatCAD(labourRate)}/hr`}
+                />
+                <InfoRow label="Materials" value={formatCAD(typedJob.estimated_materials)} />
+                <InfoRow label="Subcontractor" value={formatCAD(typedJob.estimated_subcontractor)} />
+                <InfoRow label="Overhead" value={`${overheadRate}%`} />
+                <InfoRow
+                  label={COPY.ESTIMATED_COST}
+                  value={formatCAD(margin.estimatedCost)}
+                  bold
+                />
+                <InfoRow
+                  label="Contract"
+                  value={formatCAD(typedJob.contract_value)}
+                  bold
+                />
+                <InfoRow
+                  label={COPY.ESTIMATED_PROFIT}
+                  value={formatCAD(margin.estimatedGrossProfit)}
+                  bold
+                  highlight={margin.estimatedGrossProfit >= 0 ? "green" : "red"}
+                />
+              </dl>
+            )}
           </div>
+
+          {/* Job phases */}
+          {phases.length > 0 && (
+            <div className="overflow-hidden rounded-xl border bg-white shadow-card">
+              <div className="border-b px-5 py-3">
+                <h3 className="text-sm font-semibold text-foreground">Phases</h3>
+              </div>
+              <div className="divide-y text-sm">
+                {phases.map((phase) => {
+                  const statusColor =
+                    phase.status === "completed"
+                      ? "bg-green-50 text-green-600"
+                      : phase.status === "in_progress"
+                      ? "bg-blue-50 text-blue-600"
+                      : "bg-gray-50 text-gray-500";
+                  return (
+                    <div
+                      key={phase.id}
+                      className="flex items-center justify-between px-5 py-2.5"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-foreground truncate">{phase.name}</span>
+                        <span
+                          className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize ${statusColor}`}
+                        >
+                          {phase.status.replace("_", " ")}
+                        </span>
+                      </div>
+                      {phase.actual_cost > 0 && (
+                        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                          {formatCAD(phase.actual_cost)}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Change orders */}
           <ChangeOrderList changeOrders={changeOrders} jobId={id} />
@@ -397,7 +504,7 @@ export default async function JobDetailPage({ params }: RouteParams) {
         {/* Right column — cost feed + invoice scanner + time tracker */}
         <div className="lg:col-span-2 space-y-6">
           <InvoiceScanner jobId={id} />
-          <CostFeed jobId={id} entries={entries} />
+          <CostFeed jobId={id} entries={entries} jobType={typedJob.job_type} />
           <TimeTracker jobId={id} timeEntries={timeEntries} />
         </div>
       </div>

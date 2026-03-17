@@ -8,6 +8,12 @@ const updateCostEntrySchema = z.object({
   amount: z.number().min(0.01, "Amount must be greater than 0").optional(),
   validation_status: z.enum(["pending", "validated", "rejected"]).optional(),
   receipt_url: z.string().url().nullable().optional(),
+  vendor_name: z.string().nullable().optional(),
+  vendor_id: z.string().uuid().nullable().optional(),
+  quantity: z.number().min(0).nullable().optional(),
+  unit: z.string().nullable().optional(),
+  unit_price: z.number().min(0).nullable().optional(),
+  phase_id: z.string().uuid().nullable().optional(),
 });
 
 interface RouteParams {

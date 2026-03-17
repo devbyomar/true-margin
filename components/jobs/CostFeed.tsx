@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Combobox } from "@/components/ui/combobox";
 import { COPY, COST_CATEGORY_OPTIONS } from "@/lib/copy";
+import { getSuggestionsForTrade, UNIT_OPTIONS } from "@/lib/trade-data";
 import type { CostCategory } from "@/types";
 
 // ---- Icons (inline SVGs) ----
@@ -132,12 +134,17 @@ interface CostEntryRow {
 interface CostFeedProps {
   jobId: string;
   entries: CostEntryRow[];
+  jobType?: string | null;
 }
 
 interface EditFormState {
   category: CostCategory;
   description: string;
   amount: string;
+  vendorName: string;
+  quantity: string;
+  unit: string;
+  unitPrice: string;
 }
 
 const CATEGORY_ICONS: Record<CostCategory, { icon: string; bg: string; text: string }> = {
@@ -180,7 +187,7 @@ function formatTime(dateStr: string): string {
   });
 }
 
-export function CostFeed({ jobId, entries }: CostFeedProps) {
+export function CostFeed({ jobId, entries, jobType }: CostFeedProps) {
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -189,6 +196,10 @@ export function CostFeed({ jobId, entries }: CostFeedProps) {
   const [category, setCategory] = useState<CostCategory>("materials");
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
+  const [vendorName, setVendorName] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [unit, setUnit] = useState("each");
+  const [unitPrice, setUnitPrice] = useState("");
 
   // Delete state
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
@@ -199,7 +210,7 @@ export function CostFeed({ jobId, entries }: CostFeedProps) {
 
   // Edit state
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<EditFormState>({ category: "materials", description: "", amount: "" });
+  const [editForm, setEditForm] = useState<EditFormState>({ category: "materials", description: "", amount: "", vendorName: "", quantity: "", unit: "each", unitPrice: "" });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
@@ -217,8 +228,41 @@ export function CostFeed({ jobId, entries }: CostFeedProps) {
     setCategory("materials");
     setDescription("");
     setAmount("");
+    setVendorName("");
+    setQuantity("");
+    setUnit("each");
+    setUnitPrice("");
     setError(null);
   }, []);
+
+  // Description suggestions for Combobox based on job trade
+  const descriptionOptions = useMemo(() => {
+    const suggestions = getSuggestionsForTrade(jobType ?? null);
+    return suggestions.map((s) => ({
+      value: s.description,
+      label: s.description,
+      hint: s.category,
+    }));
+  }, [jobType]);
+
+  const handleDescriptionChange = useCallback(
+    (value: string) => {
+      setDescription(value);
+      // Auto-fill category from suggestion match
+      const suggestions = getSuggestionsForTrade(jobType ?? null);
+      const match = suggestions.find(
+        (s) => s.description.toLowerCase() === value.toLowerCase()
+      );
+      if (match) {
+        setCategory(match.category as CostCategory);
+        setUnit(match.defaultUnit);
+        if (match.defaultUnitPrice) {
+          setUnitPrice(String(match.defaultUnitPrice));
+        }
+      }
+    },
+    [jobType]
+  );
 
   // ---- Edit handlers ----
   function startEditing(entry: CostEntryRow) {
@@ -227,6 +271,10 @@ export function CostFeed({ jobId, entries }: CostFeedProps) {
       category: entry.category,
       description: entry.description ?? "",
       amount: String(entry.amount),
+      vendorName: "",
+      quantity: "",
+      unit: "each",
+      unitPrice: "",
     });
     setEditError(null);
   }
@@ -255,6 +303,10 @@ export function CostFeed({ jobId, entries }: CostFeedProps) {
           category: editForm.category,
           description: editForm.description.trim() || null,
           amount: numericAmount,
+          vendor_name: editForm.vendorName.trim() || null,
+          quantity: editForm.quantity ? parseFloat(editForm.quantity) : null,
+          unit: editForm.unit || null,
+          unit_price: editForm.unitPrice ? parseFloat(editForm.unitPrice) : null,
         }),
       });
 
@@ -403,6 +455,10 @@ export function CostFeed({ jobId, entries }: CostFeedProps) {
           description: description.trim() || null,
           amount: numericAmount,
           source: "manual",
+          vendor_name: vendorName.trim() || null,
+          quantity: quantity ? parseFloat(quantity) : null,
+          unit: unit || null,
+          unit_price: unitPrice ? parseFloat(unitPrice) : null,
         }),
       });
 
@@ -512,13 +568,15 @@ export function CostFeed({ jobId, entries }: CostFeedProps) {
 
               <div className="space-y-1.5">
                 <Label htmlFor="cost-desc" className="text-xs">{COPY.COST_DESCRIPTION}</Label>
-                <Input
+                <Combobox
                   id="cost-desc"
+                  options={descriptionOptions}
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={handleDescriptionChange}
                   placeholder="e.g. Copper pipe fittings"
                   disabled={isSubmitting}
                   aria-label={COPY.COST_DESCRIPTION}
+                  allowCustom
                 />
               </div>
 
@@ -535,6 +593,61 @@ export function CostFeed({ jobId, entries }: CostFeedProps) {
                   disabled={isSubmitting}
                   aria-label={COPY.COST_AMOUNT}
                 />
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs">{COPY.LINE_ITEM_VENDOR}</Label>
+                <Input
+                  value={vendorName}
+                  onChange={(e) => setVendorName(e.target.value)}
+                  placeholder={COPY.VENDOR_SEARCH_HINT}
+                  disabled={isSubmitting}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">{COPY.LINE_ITEM_QUANTITY}</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  placeholder="1"
+                  disabled={isSubmitting}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">{COPY.LINE_ITEM_UNIT}</Label>
+                <select
+                  value={unit}
+                  onChange={(e) => setUnit(e.target.value)}
+                  disabled={isSubmitting}
+                  className="flex h-10 w-full rounded-lg border border-input bg-white px-3 py-2 text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:border-primary/50"
+                >
+                  {UNIT_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">{COPY.LINE_ITEM_UNIT_PRICE}</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="pl-7"
+                    value={unitPrice}
+                    onChange={(e) => setUnitPrice(e.target.value)}
+                    placeholder="0.00"
+                    disabled={isSubmitting}
+                  />
+                </div>
               </div>
             </div>
 
@@ -729,13 +842,15 @@ export function CostFeed({ jobId, entries }: CostFeedProps) {
 
                       <div className="space-y-1.5">
                         <Label htmlFor={`edit-desc-${entry.id}`} className="text-xs">{COPY.COST_DESCRIPTION}</Label>
-                        <Input
+                        <Combobox
                           id={`edit-desc-${entry.id}`}
+                          options={descriptionOptions}
                           value={editForm.description}
-                          onChange={(e) => setEditForm((prev) => ({ ...prev, description: e.target.value }))}
+                          onChange={(v) => setEditForm((prev) => ({ ...prev, description: v }))}
                           placeholder="e.g. Copper pipe fittings"
                           disabled={isSavingEdit}
                           aria-label={COPY.COST_DESCRIPTION}
+                          allowCustom
                         />
                       </div>
 
@@ -752,6 +867,61 @@ export function CostFeed({ jobId, entries }: CostFeedProps) {
                           disabled={isSavingEdit}
                           aria-label={COPY.COST_AMOUNT}
                         />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-4 mt-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">{COPY.LINE_ITEM_VENDOR}</Label>
+                        <Input
+                          value={editForm.vendorName}
+                          onChange={(e) => setEditForm((prev) => ({ ...prev, vendorName: e.target.value }))}
+                          placeholder={COPY.VENDOR_SEARCH_HINT}
+                          disabled={isSavingEdit}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">{COPY.LINE_ITEM_QUANTITY}</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={editForm.quantity}
+                          onChange={(e) => setEditForm((prev) => ({ ...prev, quantity: e.target.value }))}
+                          placeholder="1"
+                          disabled={isSavingEdit}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">{COPY.LINE_ITEM_UNIT}</Label>
+                        <select
+                          value={editForm.unit}
+                          onChange={(e) => setEditForm((prev) => ({ ...prev, unit: e.target.value }))}
+                          disabled={isSavingEdit}
+                          className="flex h-10 w-full rounded-lg border border-input bg-white px-3 py-2 text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:border-primary/50"
+                        >
+                          {UNIT_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">{COPY.LINE_ITEM_UNIT_PRICE}</Label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            className="pl-7"
+                            value={editForm.unitPrice}
+                            onChange={(e) => setEditForm((prev) => ({ ...prev, unitPrice: e.target.value }))}
+                            placeholder="0.00"
+                            disabled={isSavingEdit}
+                          />
+                        </div>
                       </div>
                     </div>
 
